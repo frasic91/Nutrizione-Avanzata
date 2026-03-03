@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calcolatore Nutrizione Avanzato</title>
+
+<style>
+*{box-sizing:border-box;}
+body{font-family:Arial;margin:0;padding:15px;background:#f4f4f4;}
+.container{max-width:1000px;margin:auto;background:white;padding:20px;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+input,select{width:100%;padding:10px;margin:6px 0 12px;border-radius:8px;border:1px solid #ccc;}
+button{width:100%;padding:12px;margin-top:10px;border:none;border-radius:10px;cursor:pointer;}
+.primary{background:#4CAF50;color:white;}
+.reset-btn{background:#f44336;color:white;}
+.download-btn{background:#2196F3;color:white;}
+table{width:100%;border-collapse:collapse;margin-top:20px;}
+th,td{border:1px solid #ddd;padding:6px;text-align:center;}
+th{background:#eee;}
+.totale{font-weight:bold;background:#e0ffe0;}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="authBox" style="max-width:400px;margin:40px auto;background:white;padding:20px;border-radius:12px;">
+<h3>Login</h3>
+<input type="email" id="loginEmail" placeholder="Email">
+<input type="password" id="loginPassword" placeholder="Password">
+<button onclick="login()" class="primary">Accedi</button>
+<button onclick="register()" class="download-btn">Registrati</button>
+<p id="authMessage"></p>
+</div>
+
+<!-- APP -->
+<div class="container" id="app" style="display:none;">
+<h2>Calcolatore Nutrizione</h2>
+<button onclick="logout()" class="reset-btn">Logout</button>
+
+<label>Peso (kg)</label>
+<input type="number" id="peso">
+
+<label>Altezza (cm)</label>
+<input type="number" id="altezza">
+
+<label>Età</label>
+<input type="number" id="eta">
+
+<label>Sesso</label>
+<select id="sesso">
+<option value="uomo">Uomo</option>
+<option value="donna">Donna</option>
+</select>
+
+<label>Livello attività</label>
+<select id="attivita">
+<option value="1.2">Sedentario</option>
+<option value="1.55" selected>Moderato</option>
+<option value="1.9">Molto attivo</option>
+</select>
+
+<label>Data</label>
+<input type="date" id="giorno">
+
+<label>Km corsa</label>
+<input type="number" id="km">
+
+<button onclick="calcola()" class="primary">Salva Giorno</button>
+<button onclick="resetSettimana()" class="reset-btn">Reset Settimana</button>
+
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Calorie</th>
+<th>Proteine</th>
+<th>Carbo</th>
+<th>Grassi</th>
+</tr>
+</thead>
+<tbody id="tabella"></tbody>
+<tfoot>
+<tr class="totale">
+<td>Totale</td>
+<td id="totCal"></td>
+<td id="totPro"></td>
+<td id="totCarb"></td>
+<td id="totGrass"></td>
+</tr>
+</tfoot>
+</table>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getAuth, signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+import { 
+  getFirestore, doc, setDoc, getDoc,
+  deleteDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// CONFIG FIREBASE
+const firebaseConfig = {
+  apiKey: "AIzaSyDkK5mKhhjnXoeQLH9OShjSHXQgf7EJ-Nk",
+  authDomain: "nutrizione-8311d.firebaseapp.com",
+  projectId: "nutrizione-8311d",
+  storageBucket: "nutrizione-8311d.firebasestorage.app",
+  messagingSenderId: "450793333889",
+  appId: "1:450793333889:web:12611a1e4ce8454eba1980"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let dati = {};
+let currentUser = null;
+
+// LOGIN
+window.login = () => {
+  signInWithEmailAndPassword(auth,
+    loginEmail.value,
+    loginPassword.value
+  ).catch(e => authMessage.innerText = e.message);
+};
+
+// REGISTER
+window.register = () => {
+  createUserWithEmailAndPassword(auth,
+    loginEmail.value,
+    loginPassword.value
+  ).catch(e => authMessage.innerText = e.message);
+};
+
+// LOGOUT
+window.logout = () => signOut(auth);
+
+// AUTH STATE
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    authBox.style.display="none";
+    app.style.display="block";
+    await caricaDati();
+  } else {
+    authBox.style.display="block";
+    app.style.display="none";
+  }
+});
+
+// CALCOLO + SALVATAGGIO
+window.calcola = async function(){
+
+const peso=parseFloat(peso.value);
+const altezza=parseFloat(altezza.value);
+const eta=parseFloat(eta.value);
+const attivita=parseFloat(attivita.value);
+const sesso=document.getElementById("sesso").value;
+
+if(!peso||!altezza||!eta) return alert("Compila dati");
+
+let BMR = (sesso==="uomo")
+? (10*peso+6.25*altezza-5*eta+5)
+: (10*peso+6.25*altezza-5*eta-161);
+
+let calorieTotali=BMR*attivita;
+let proteine=(calorieTotali*0.2)/4;
+let carbo=(calorieTotali*0.6)/4;
+let grassi=(calorieTotali*0.2)/9;
+
+const data=giorno.value;
+if(!data) return alert("Seleziona data");
+
+dati[data]={calorie:calorieTotali,proteine,carbo,grassi};
+
+await setDoc(doc(db,"utenti",currentUser.uid),{
+settimana:dati
+});
+
+aggiorna();
+};
+
+// CARICA
+async function caricaDati(){
+const snap=await getDoc(doc(db,"utenti",currentUser.uid));
+if(snap.exists()){
+dati=snap.data().settimana||{};
+}else{
+dati={};
+}
+aggiorna();
+}
+
+// RESET
+window.resetSettimana = async function(){
+if(confirm("Cancellare settimana?")){
+dati={};
+await deleteDoc(doc(db,"utenti",currentUser.uid));
+aggiorna();
+}
+};
+
+// AGGIORNA TABELLA
+function aggiorna(){
+tabella.innerHTML="";
+let totCal=0,totPro=0,totCarb=0,totGrass=0;
+
+Object.keys(dati).sort().forEach(data=>{
+const d=dati[data];
+tabella.innerHTML+=`
+<tr>
+<td>${data}</td>
+<td>${d.calorie.toFixed(0)}</td>
+<td>${d.proteine.toFixed(1)}</td>
+<td>${d.carbo.toFixed(1)}</td>
+<td>${d.grassi.toFixed(1)}</td>
+</tr>`;
+totCal+=d.calorie;
+totPro+=d.proteine;
+totCarb+=d.carbo;
+totGrass+=d.grassi;
+});
+
+totCal.innerText=totCal.toFixed(0);
+totPro.innerText=totPro.toFixed(1);
+totCarb.innerText=totCarb.toFixed(1);
+totGrass.innerText=totGrass.toFixed(1);
+}
+
+</script>
+
+</body>
+</html>
