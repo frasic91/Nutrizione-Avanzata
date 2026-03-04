@@ -1,246 +1,252 @@
 <!DOCTYPE html>
-<html lang="it">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tracker Settimanale</title>
+<title>Nutrition Tracker Cloud</title>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body{
-  font-family: Arial;
-  background:#f4f6f9;
-  margin:0;
-  padding:20px;
-}
-.container{
-  max-width:1100px;
-  margin:auto;
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  box-shadow:0 5px 20px rgba(0,0,0,0.1);
-}
-input,button{
-  padding:8px;
-  margin:4px;
-}
-button{
-  background:#4CAF50;
-  color:white;
-  border:none;
-  cursor:pointer;
-}
+body {font-family:Arial;background:#f4f6f9;margin:0;padding:20px}
+.container{max-width:1100px;margin:auto}
+.card{background:white;padding:20px;border-radius:12px;margin-bottom:20px;box-shadow:0 4px 10px rgba(0,0,0,0.08)}
+button{padding:8px 12px;border:none;border-radius:6px;background:#2563eb;color:white;cursor:pointer}
 button:hover{opacity:0.9}
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:20px;
-}
-th,td{
-  border:1px solid #ddd;
-  padding:8px;
-  text-align:center;
-}
-th{background:#f2f2f2}
-.hidden{display:none}
-canvas{margin-top:20px}
+input{padding:6px;border:1px solid #ccc;border-radius:6px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ddd;padding:6px;text-align:center}
+th{background:#f1f1f1}
+#app{display:none}
 </style>
 </head>
 
 <body>
-
 <div class="container">
 
-<!-- LOGIN -->
-<div id="loginBox">
+<div class="card" id="loginBox">
 <h2>Login</h2>
-<input type="email" id="email" placeholder="Email">
-<input type="password" id="password" placeholder="Password">
+<input type="email" id="email" placeholder="Email"><br><br>
+<input type="password" id="password" placeholder="Password"><br><br>
 <button onclick="login()">Login</button>
-<button onclick="signup()">Signup</button>
-<p id="loginMsg" style="color:red;"></p>
+<button onclick="signup()">Sign Up</button>
+<p id="loginMsg" style="color:red"></p>
 </div>
 
-<!-- APP -->
-<div id="app" class="hidden">
-<h2>Tracker Settimanale</h2>
+<div id="app">
 
+<div class="card">
 <button onclick="logout()">Logout</button>
+</div>
 
-<h3>Inserimento Giornaliero</h3>
-<input type="date" id="data">
-<input type="number" id="peso" placeholder="Peso">
-<input type="number" id="fabbisogno" placeholder="Fabbisogno Giornaliero">
-<input type="number" id="calorieEffettive" placeholder="Calorie Effettive">
+<div class="card">
+<h3>Nuovo Giorno</h3>
+Data <input type="date" id="data">
+Peso <input type="number" id="peso">
+BMR <input type="number" id="bmr">
+NEAT <input type="number" id="neat">
+Watt <input type="number" id="watt">
+Durata (min) <input type="number" id="durata">
+Calorie Effettive <input type="number" id="calorieEff">
 <button onclick="salvaGiorno()">Salva</button>
+</div>
 
+<div class="card">
 <h3>Ultimi 7 Giorni</h3>
-<table id="tabella">
+<table>
 <thead>
 <tr>
 <th>Data</th>
 <th>Peso</th>
 <th>Fabbisogno</th>
-<th>Calorie Effettive</th>
+<th>Calorie Eff.</th>
 <th>Deficit/Surplus</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="tabella"></tbody>
 </table>
+<button onclick="toggleStorico()">Mostra Storico</button>
+</div>
 
-<h3>Grafico Peso</h3>
-<canvas id="graficoPeso"></canvas>
+<div class="card" id="storicoBox" style="display:none">
+<h3>Storico Completo</h3>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Peso</th>
+<th>Fabbisogno</th>
+<th>Calorie Eff.</th>
+<th>Deficit/Surplus</th>
+</tr>
+</thead>
+<tbody id="tabellaStorico"></tbody>
+</table>
+</div>
 
-<h3>Grafico Calorie</h3>
+<div class="card">
 <canvas id="graficoCalorie"></canvas>
+</div>
+
+<div class="card">
+<canvas id="graficoPeso"></canvas>
+</div>
 
 </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded",function(){
-
-// FIREBASE CONFIG
-const firebaseConfig={
-  apiKey:"AIzaSyAgObxcbvQfmbDrTkD8c1qE-iyxIwwDDmM",
-  authDomain:"libreria-24a25.firebaseapp.com",
-  projectId:"libreria-24a25",
-  storageBucket:"libreria-24a25.firebasestorage.app",
-  messagingSenderId:"176468553745",
-  appId:"1:176468553745:web:e22ee006840027fd2e41b0"
+const firebaseConfig = {
+  apiKey: "AIzaSyAgObxcbvQfmbDrTkD8c1qE-iyxIwwDDmM",
+  authDomain: "libreria-24a25.firebaseapp.com",
+  projectId: "libreria-24a25",
+  storageBucket: "libreria-24a25.firebasestorage.app",
+  messagingSenderId: "176468553745",
+  appId: "1:176468553745:web:e22ee006840027fd2e41b0"
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth=firebase.auth();
-const db=firebase.firestore();
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-let userUID=null;
-let pesoChart=null;
-let calorieChart=null;
+let userUID = null;
+let dati = [];
 
-// AUTH STATE
 auth.onAuthStateChanged(user=>{
-  if(user){
-    userUID=user.uid;
-    document.getElementById("loginBox").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
-    caricaDati();
-  }else{
-    document.getElementById("loginBox").classList.remove("hidden");
-    document.getElementById("app").classList.add("hidden");
-  }
+if(user){
+userUID=user.uid;
+document.getElementById("loginBox").style.display="none";
+document.getElementById("app").style.display="block";
+caricaDati();
+}else{
+document.getElementById("loginBox").style.display="block";
+document.getElementById("app").style.display="none";
+}
 });
 
-// LOGIN
-window.login=function(){
-  auth.signInWithEmailAndPassword(
-    document.getElementById("email").value,
-    document.getElementById("password").value
-  ).catch(e=>document.getElementById("loginMsg").innerText=e.message);
+function login(){
+auth.signInWithEmailAndPassword(
+document.getElementById("email").value,
+document.getElementById("password").value
+).catch(e=>document.getElementById("loginMsg").innerText=e.message);
 }
 
-// SIGNUP
-window.signup=function(){
-  auth.createUserWithEmailAndPassword(
-    document.getElementById("email").value,
-    document.getElementById("password").value
-  ).catch(e=>document.getElementById("loginMsg").innerText=e.message);
+function signup(){
+auth.createUserWithEmailAndPassword(
+document.getElementById("email").value,
+document.getElementById("password").value
+).catch(e=>document.getElementById("loginMsg").innerText=e.message);
 }
 
-// LOGOUT
-window.logout=function(){
-  auth.signOut();
+function logout(){
+auth.signOut();
 }
 
-// SALVA
-window.salvaGiorno=function(){
-  if(!userUID) return;
+async function salvaGiorno(){
+if(!userUID) return alert("Login richiesto");
 
-  const data=document.getElementById("data").value;
-  const peso=parseFloat(document.getElementById("peso").value);
-  const fabbisogno=parseFloat(document.getElementById("fabbisogno").value);
-  const calorieEffettive=parseFloat(document.getElementById("calorieEffettive").value);
+const data=document.getElementById("data").value;
+const peso=parseFloat(document.getElementById("peso").value)||0;
+const bmr=parseFloat(document.getElementById("bmr").value)||0;
+const neat=parseFloat(document.getElementById("neat").value)||0;
+const watt=parseFloat(document.getElementById("watt").value)||0;
+const durata=(parseFloat(document.getElementById("durata").value)||0)*60;
+const calorieEff=parseFloat(document.getElementById("calorieEff").value)||0;
 
-  const deficit=Math.round(calorieEffettive - fabbisogno);
+const kcalBici=(watt*durata)/1000/1.11631;
+const fabbisogno=Math.round(bmr+neat+kcalBici);
+const diff=Math.round(calorieEff-fabbisogno);
 
-  db.collection("utenti").doc(userUID)
-  .collection("giorni").doc(data)
-  .set({
-    data,peso,fabbisogno,calorieEffettive,deficit
-  }).then(()=>caricaDati());
-}
-
-// CARICA
-function caricaDati(){
-  db.collection("utenti").doc(userUID)
-  .collection("giorni")
-  .orderBy("data","desc")
-  .limit(7)
-  .get()
-  .then(snapshot=>{
-    const tbody=document.querySelector("#tabella tbody");
-    tbody.innerHTML="";
-
-    const labels=[];
-    const pesi=[];
-    const calorie=[];
-
-    snapshot.forEach(doc=>{
-      const d=doc.data();
-      tbody.innerHTML+=`
-        <tr>
-          <td>${d.data}</td>
-          <td>${d.peso}</td>
-          <td>${d.fabbisogno}</td>
-          <td>${d.calorieEffettive}</td>
-          <td>${d.deficit}</td>
-        </tr>
-      `;
-      labels.push(d.data);
-      pesi.push(d.peso);
-      calorie.push(d.calorieEffettive);
-    });
-
-    creaGrafici(labels.reverse(),pesi.reverse(),calorie.reverse());
-  });
-}
-
-// GRAFICI
-function creaGrafici(labels,pesi,calorie){
-
-  if(pesoChart) pesoChart.destroy();
-  if(calorieChart) calorieChart.destroy();
-
-  pesoChart=new Chart(document.getElementById("graficoPeso"),{
-    type:"bar",
-    data:{
-      labels:labels,
-      datasets:[{
-        label:"Peso",
-        data:pesi
-      }]
-    }
-  });
-
-  calorieChart=new Chart(document.getElementById("graficoCalorie"),{
-    type:"bar",
-    data:{
-      labels:labels,
-      datasets:[{
-        label:"Calorie Effettive",
-        data:calorie
-      }]
-    }
-  });
-}
-
+await db.collection("users").doc(userUID)
+.collection("giorni").doc(data).set({
+data,peso,bmr,neat,watt,durata,calorieEff,fabbisogno,diff
 });
+
+caricaDati();
+}
+
+async function caricaDati(){
+const snap=await db.collection("users").doc(userUID)
+.collection("giorni").orderBy("data").get();
+
+dati=[];
+snap.forEach(doc=>dati.push(doc.data()));
+render();
+}
+
+function render(){
+const last7=dati.slice(-7);
+const tab=document.getElementById("tabella");
+tab.innerHTML="";
+last7.forEach(g=>{
+tab.innerHTML+=`<tr>
+<td>${g.data}</td>
+<td>${g.peso}</td>
+<td>${g.fabbisogno}</td>
+<td contenteditable="true" onblur="modificaCalorie('${g.data}',this.innerText)">${g.calorieEff}</td>
+<td>${g.diff}</td>
+</tr>`;
+});
+
+const storico=document.getElementById("tabellaStorico");
+storico.innerHTML="";
+dati.forEach(g=>{
+storico.innerHTML+=`<tr>
+<td>${g.data}</td>
+<td>${g.peso}</td>
+<td>${g.fabbisogno}</td>
+<td>${g.calorieEff}</td>
+<td>${g.diff}</td>
+</tr>`;
+});
+
+grafici();
+}
+
+async function modificaCalorie(data,val){
+const g=dati.find(x=>x.data===data);
+g.calorieEff=parseFloat(val)||0;
+g.diff=Math.round(g.calorieEff-g.fabbisogno);
+
+await db.collection("users").doc(userUID)
+.collection("giorni").doc(data).update({
+calorieEff:g.calorieEff,
+diff:g.diff
+});
+caricaDati();
+}
+
+function toggleStorico(){
+const box=document.getElementById("storicoBox");
+box.style.display=box.style.display==="none"?"block":"none";
+}
+
+let chartCal,chartPeso;
+
+function grafici(){
+const labels=dati.map(g=>g.data);
+const calorie=dati.map(g=>g.fabbisogno);
+const peso=dati.map(g=>g.peso);
+
+if(chartCal) chartCal.destroy();
+if(chartPeso) chartPeso.destroy();
+
+chartCal=new Chart(document.getElementById("graficoCalorie"),{
+type:"bar",
+data:{labels,datasets:[{label:"Fabbisogno",data:calorie}]}
+});
+
+chartPeso=new Chart(document.getElementById("graficoPeso"),{
+type:"bar",
+data:{labels,datasets:[{label:"Peso",data:peso}]}
+});
+}
 </script>
 
 </body>
