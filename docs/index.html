@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',sans-serif;}
-body{background:linear-gradient(135deg,#a8edea,#fed6e3);padding:20px;}
+body{background:linear-gradient(135deg,#a8edea,#fed6e3);padding:0;margin:0;}
 h2{font-size:2rem;text-align:center;color:#333;margin-bottom:25px;}
 .container{max-width:1200px;margin:auto;background:#fff;border-radius:20px;padding:30px;box-shadow:0 20px 40px rgba(0,0,0,0.15);}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-bottom:25px;}
@@ -27,136 +27,240 @@ th{background:#f1f3f6;position:sticky;top:0;z-index:2;font-weight:700;}
 .totale{background:#e0f7fa;font-weight:600;}
 .stat-box{background:#f5f5f5;padding:15px;border-radius:15px;margin-top:20px;text-align:center;font-weight:600;font-size:1rem;color:#333;}
 canvas{margin-top:30px;background:#fff;border-radius:15px;padding:15px;box-shadow:0 8px 20px rgba(0,0,0,0.08);}
+#loginScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;}
+#loginScreen input{width:250px;margin:5px;padding:12px;border-radius:8px;}
+#loginScreen button{margin:5px;}
+#trackerScreen{display:none;}
 </style>
 </head>
 <body>
-<div class="container">
-<h2>Nutrition Tracker Pro</h2>
 
-<div class="grid">
-<div><label>Peso (kg)</label><input type="number" id="peso" step="0.1"></div>
-<div><label>Altezza (cm)</label><input type="number" id="altezza"></div>
-<div><label>Età</label><input type="number" id="eta"></div>
-<div><label>Sesso</label>
-  <select id="sesso">
-    <option value="uomo">Uomo</option>
-    <option value="donna">Donna</option>
-  </select>
-</div>
-<div><label>Livello attività</label>
-  <select id="attivita">
-    <option value="1.2">Sedentario</option>
-    <option value="1.375">Leggermente attivo</option>
-    <option value="1.55" selected>Moderato</option>
-    <option value="1.725">Molto attivo</option>
-    <option value="1.9">Estremo</option>
-  </select>
-</div>
-<div><label>BMR manuale (kcal)</label><input type="number" id="bmrManuale" placeholder="Opzionale"></div>
-<div><label>NEAT manuale (kcal)</label><input type="number" id="neatManuale" placeholder="Opzionale"></div>
-<div><label>Data</label><input type="date" id="giorno"></div>
-<div><label>Peso del giorno (kg)</label><input type="number" id="pesoGiorno" step="0.1"></div>
-<div><label>Km corsa</label><input type="number" id="km" step="0.1"></div>
-<div><label>Watt medi bici</label><input type="number" id="wattBici"></div>
-<div><label>Durata bici (minuti)</label><input type="number" id="durataBici"></div>
-<div><label>Deficit / Surplus (kcal)</label><input type="number" id="valoreCalorie"></div>
-<div><label>% Proteine</label><input type="number" id="proteine" value="20"></div>
-<div><label>% Carbo</label><input type="number" id="carbo" value="60"></div>
-<div><label>% Grassi</label><input type="number" id="grassi" value="20"></div>
+<!-- SCHERMATA LOGIN -->
+<div id="loginScreen">
+  <h2>Login Nutrition Tracker</h2>
+  <input type="email" id="email" placeholder="Email">
+  <input type="password" id="password" placeholder="Password">
+  <div>
+    <button onclick="registerUser(document.getElementById('email').value, document.getElementById('password').value)">Registrati</button>
+    <button onclick="loginUser(document.getElementById('email').value, document.getElementById('password').value)">Login</button>
+  </div>
 </div>
 
-<button class="primary" onclick="calcola()">Salva Giorno</button>
-<button class="primary" onclick="aggiornaPesoGiorno()">Aggiorna Solo Peso</button>
-<button class="reset" onclick="resetSettimana()">Reset</button>
-<button class="download" onclick="downloadExcel()">Scarica Excel</button>
-<button class="toggle" onclick="toggleStorico()">Mostra storico completo</button>
+<!-- SCHERMATA TRACKER -->
+<div id="trackerScreen" class="container">
+  <button style="float:right;" onclick="logoutUser()">Logout</button>
+  <h2>Nutrition Tracker Pro</h2>
 
-<div class="stat-box" id="mediaPeso">Media peso settimanale: -</div>
+  <div class="grid">
+    <div><label>Peso (kg)</label><input type="number" id="peso" step="0.1"></div>
+    <div><label>Altezza (cm)</label><input type="number" id="altezza"></div>
+    <div><label>Età</label><input type="number" id="eta"></div>
+    <div><label>Sesso</label>
+      <select id="sesso">
+        <option value="uomo">Uomo</option>
+        <option value="donna">Donna</option>
+      </select>
+    </div>
+    <div><label>Livello attività</label>
+      <select id="attivita">
+        <option value="1.2">Sedentario</option>
+        <option value="1.375">Leggermente attivo</option>
+        <option value="1.55" selected>Moderato</option>
+        <option value="1.725">Molto attivo</option>
+        <option value="1.9">Estremo</option>
+      </select>
+    </div>
+    <div><label>BMR manuale (kcal)</label><input type="number" id="bmrManuale" placeholder="Opzionale"></div>
+    <div><label>NEAT manuale (kcal)</label><input type="number" id="neatManuale" placeholder="Opzionale"></div>
+    <div><label>Data</label><input type="date" id="giorno"></div>
+    <div><label>Peso del giorno (kg)</label><input type="number" id="pesoGiorno" step="0.1"></div>
+    <div><label>Km corsa</label><input type="number" id="km" step="0.1" min="0"></div>
+    <div><label>Watt medi bici</label><input type="number" id="wattBici" min="0"></div>
+    <div><label>Durata bici (minuti)</label><input type="number" id="durataBici" min="0"></div>
+    <div><label>Deficit / Surplus (kcal)</label><input type="number" id="valoreCalorie"></div>
+    <div><label>% Proteine</label><input type="number" id="proteine" value="20"></div>
+    <div><label>% Carbo</label><input type="number" id="carbo" value="60"></div>
+    <div><label>% Grassi</label><input type="number" id="grassi" value="20"></div>
+  </div>
 
-<div class="table-wrapper">
-<table>
-<thead>
-<tr>
-<th>Data</th>
-<th>Fabbisogno Giornaliero</th>
-<th>Calorie</th>
-<th>Proteine</th>
-<th>Carbo</th>
-<th>Grassi</th>
-<th>Peso</th>
-<th>Calorie Effettive</th>
-<th>Deficit/Surplus</th>
-</tr>
-</thead>
-<tbody id="tabella"></tbody>
-<tfoot>
-<tr class="totale">
-<td>-</td>
-<td>-</td>
-<td id="totCal"></td>
-<td id="totPro"></td>
-<td id="totCarb"></td>
-<td id="totGrass"></td>
-<td>-</td>
-<td>-</td>
-<td>-</td>
-</tr>
-</tfoot>
-</table>
+  <button class="primary" onclick="calcola()">Salva Giorno</button>
+  <button class="primary" onclick="aggiornaPesoGiorno()">Aggiorna Solo Peso</button>
+  <button class="reset" onclick="resetSettimana()">Reset</button>
+  <button class="download" onclick="downloadExcel()">Scarica Excel</button>
+  <button class="toggle" onclick="toggleStorico()">Mostra storico completo</button>
+
+  <div class="stat-box" id="mediaPeso">Media peso settimanale: -</div>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Fabbisogno Giornaliero</th>
+          <th>Calorie</th>
+          <th>Proteine</th>
+          <th>Carbo</th>
+          <th>Grassi</th>
+          <th>Peso</th>
+          <th>Calorie Effettive</th>
+          <th>Deficit/Surplus</th>
+        </tr>
+      </thead>
+      <tbody id="tabella"></tbody>
+      <tfoot>
+        <tr class="totale">
+          <td>-</td>
+          <td>-</td>
+          <td id="totCal"></td>
+          <td id="totPro"></td>
+          <td id="totCarb"></td>
+          <td id="totGrass"></td>
+          <td>-</td>
+          <td>-</td>
+          <td>-</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <canvas id="calorieChart"></canvas>
+  <canvas id="macroChart"></canvas>
+  <canvas id="pesoChart"></canvas>
 </div>
 
-<canvas id="calorieChart"></canvas>
-<canvas id="macroChart"></canvas>
-<canvas id="pesoChart"></canvas>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js";
 
-<script>
-var dati = JSON.parse(localStorage.getItem("settimana")) || {};
+// Config Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyDkK5mKhhjnXoeQLH9OShjSHXQgf7EJ-Nk",
+  authDomain: "nutrizione-8311d.firebaseapp.com",
+  projectId: "nutrizione-8311d",
+  storageBucket: "nutrizione-8311d.firebasestorage.app",
+  messagingSenderId: "450793333889",
+  appId: "1:450793333889:web:12611a1e4ce8454eba1980"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+window.dati = {};
 var mostraStoricoCompleto = false;
 
+// ===================== LOGIN / REGISTER =====================
+window.registerUser = async (email, password) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    alert("Registrazione avvenuta con successo!");
+    return userCredential.user;
+  } catch (error) {
+    alert("Errore registrazione: " + error.message);
+  }
+};
+
+window.loginUser = async (email, password) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    alert("Login avvenuto con successo!");
+    loadUserData(userCredential.user.uid);
+    return userCredential.user;
+  } catch (error) {
+    alert("Errore login: " + error.message);
+  }
+};
+
+window.logoutUser = async () => {
+  await signOut(auth);
+  alert("Logout effettuato!");
+  window.dati = {};
+  aggiorna();
+};
+
+// ===================== FIRESTORE =====================
+window.saveDataFirebase = async (uid, dati) => {
+  try { await setDoc(doc(db,"users",uid),{dati}); } 
+  catch(e){console.error("Errore salvataggio dati:",e);}
+};
+window.loadUserData = async (uid) => {
+  try {
+    const docSnap = await getDoc(doc(db,"users",uid));
+    window.dati = docSnap.exists()?docSnap.data().dati:{}; aggiorna();
+  } catch(e){console.error("Errore caricamento dati:",e);}
+};
+
+// ===================== MONITOR UTENTE =====================
+onAuthStateChanged(auth,(user)=>{
+  if(user){
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("trackerScreen").style.display="block";
+    loadUserData(user.uid);
+  } else {
+    document.getElementById("loginScreen").style.display="flex";
+    document.getElementById("trackerScreen").style.display="none";
+  }
+});
+
+// ===================== FUNZIONI TRACKER =====================
+// Qui inserisci tutte le funzioni calcola(), aggiorna(), aggiornaPesoGiorno(), ecc.
+// (Usa lo stesso codice JS del tuo tracker originale, integrando saveDataFirebase quando aggiorni dati)
+  // ===================== TRACKER FUNCTIONS =====================
+
 function calcola(){
-  var p=parseFloat(document.getElementById("peso").value);
-  var a=parseFloat(document.getElementById("altezza").value);
-  var e=parseFloat(document.getElementById("eta").value);
-  var s=document.getElementById("sesso").value;
-  var act=parseFloat(document.getElementById("attivita").value);
-  if(!p||!a||!e){alert("Inserisci dati profilo");return;}
-  
-  var bmrMan=parseFloat(document.getElementById("bmrManuale").value);
-  var BMR=!isNaN(bmrMan)?bmrMan:(s==="uomo")?(10*p+6.25*a-5*e+5):(10*p+6.25*a-5*e-161);
-  
-  var neatMan=parseFloat(document.getElementById("neatManuale").value);
-  var NEAT=!isNaN(neatMan)?neatMan:(BMR*act-BMR);
-  
-  var TDEE=BMR+NEAT;
-  
-  var kmCorsa=parseFloat(document.getElementById("km").value)||0;
-  var calorieCorsa=kmCorsa*p;
-  
-  var wattB=parseFloat(document.getElementById("wattBici").value)||0;
-  var durMin=parseFloat(document.getElementById("durataBici").value)||0;
-  var calorieBici=0;
+  var p = parseFloat(document.getElementById("peso").value);
+  var a = parseFloat(document.getElementById("altezza").value);
+  var e = parseFloat(document.getElementById("eta").value);
+  var s = document.getElementById("sesso").value;
+  var act = parseFloat(document.getElementById("attivita").value);
+  if(!p||!a||!e){alert("Inserisci dati profilo"); return;}
+
+  var bmrMan = parseFloat(document.getElementById("bmrManuale").value);
+  var BMR = !isNaN(bmrMan)? bmrMan : (s==="uomo")? (10*p+6.25*a-5*e+5) : (10*p+6.25*a-5*e-161);
+
+  var neatMan = parseFloat(document.getElementById("neatManuale").value);
+  var NEAT = !isNaN(neatMan)? neatMan : (BMR*act-BMR);
+
+  var TDEE = BMR+NEAT;
+
+  var kmCorsa = parseFloat(document.getElementById("km").value)||0;
+  var calorieCorsa = kmCorsa*p;
+
+  var wattB = parseFloat(document.getElementById("wattBici").value)||0;
+  var durMin = parseFloat(document.getElementById("durataBici").value)||0;
+  var calorieBici = 0;
   if(wattB>0 && durMin>0){var sec=durMin*60; calorieBici=(wattB*sec)/1000/1.11631;}
-  
-  var calorieTotali=TDEE+calorieCorsa+calorieBici;
-  var adj=parseFloat(document.getElementById("valoreCalorie").value)||0;
-  calorieTotali+=adj;
+
+  var calorieTotali = TDEE+calorieCorsa+calorieBici;
+  var adj = parseFloat(document.getElementById("valoreCalorie").value)||0;
+  calorieTotali += adj;
   if(calorieTotali<TDEE) calorieTotali=TDEE;
-  
-  var proPerc=parseFloat(document.getElementById("proteine").value)||20;
-  var carbPerc=parseFloat(document.getElementById("carbo").value)||60;
-  var grassPerc=parseFloat(document.getElementById("grassi").value)||20;
-  if(Math.round(proPerc+carbPerc+grassPerc)!==100){alert("Macro devono sommare 100");return;}
-  
-  var proteineG=(calorieTotali*(proPerc/100))/4;
-  var carboG=(calorieTotali*(carbPerc/100))/4;
-  var grassiG=(calorieTotali*(grassPerc/100))/9;
-  
-  var dataG=document.getElementById("giorno").value;
-  var pesoG=parseFloat(document.getElementById("pesoGiorno").value)||null;
-  if(!dataG){alert("Seleziona data");return;}
-  
-  dati[dataG]={calorieTotali,proteine:proteineG,carbo:carboG,grassi:grassiG,peso:pesoG,calorieEff:dati[dataG]?.calorieEff || null};
-  localStorage.setItem("settimana",JSON.stringify(dati));
+
+  var proPerc = parseFloat(document.getElementById("proteine").value)||20;
+  var carbPerc = parseFloat(document.getElementById("carbo").value)||60;
+  var grassPerc = parseFloat(document.getElementById("grassi").value)||20;
+  if(Math.round(proPerc+carbPerc+grassPerc)!==100){alert("Macro devono sommare 100"); return;}
+
+  var proteineG = (calorieTotali*(proPerc/100))/4;
+  var carboG = (calorieTotali*(carbPerc/100))/4;
+  var grassiG = (calorieTotali*(grassPerc/100))/9;
+
+  var dataG = document.getElementById("giorno").value;
+  var pesoG = parseFloat(document.getElementById("pesoGiorno").value)||null;
+  if(!dataG){alert("Seleziona data"); return;}
+
+  dati[dataG] = {
+    calorieTotali,
+    proteine: proteineG,
+    carbo: carboG,
+    grassi: grassiG,
+    peso: pesoG,
+    calorieEff: dati[dataG]?.calorieEff || null
+  };
+
+  localStorage.setItem("settimana", JSON.stringify(dati));
+  if(auth.currentUser) saveDataFirebase(auth.currentUser.uid, dati);
   aggiorna();
 }
 
@@ -165,22 +269,31 @@ function aggiornaPesoGiorno(){
   var pesoG = parseFloat(document.getElementById("pesoGiorno").value);
   if(!dataG || isNaN(pesoG)){ alert("Seleziona data e inserisci peso valido"); return; }
   if(dati[dataG]){
-      dati[dataG].peso = pesoG;
-      localStorage.setItem("settimana", JSON.stringify(dati));
-      aggiorna();
-      alert("Peso aggiornato!");
+    dati[dataG].peso = pesoG;
+    localStorage.setItem("settimana", JSON.stringify(dati));
+    if(auth.currentUser) saveDataFirebase(auth.currentUser.uid, dati);
+    aggiorna();
+    alert("Peso aggiornato!");
   } else { alert("Non ci sono dati per questo giorno. Prima salva il giorno con calorie e macro."); }
 }
 
 function aggiornaCalorieEff(data, valore){
   var val = parseFloat(valore);
   if(!isNaN(val)){
-      dati[data].calorieEff = val;
-      localStorage.setItem("settimana", JSON.stringify(dati));
+    dati[data].calorieEff = val;
+    localStorage.setItem("settimana", JSON.stringify(dati));
+    if(auth.currentUser) saveDataFirebase(auth.currentUser.uid, dati);
   }
 }
 
-function resetSettimana(){if(confirm("Cancellare tutto?")){dati={};localStorage.removeItem("settimana");aggiorna();}}
+function resetSettimana(){
+  if(confirm("Cancellare tutto?")){
+    dati={};
+    localStorage.removeItem("settimana");
+    if(auth.currentUser) saveDataFirebase(auth.currentUser.uid, dati);
+    aggiorna();
+  }
+}
 
 function toggleStorico(){
   mostraStoricoCompleto = !mostraStoricoCompleto;
@@ -191,9 +304,9 @@ function toggleStorico(){
 function downloadExcel(){
   var table=`<table border="1"><tr><th>Data</th><th>Fabbisogno Giornaliero</th><th>Calorie</th><th>Proteine</th><th>Carbo</th><th>Grassi</th><th>Peso</th><th>Calorie Effettive</th><th>Deficit/Surplus</th></tr>`;
   Object.keys(dati).sort().forEach(d=>{
-      var val=dati[d];
-      var deficitSurplus=(val.calorieEff)?(val.calorieEff-val.calorieTotali).toFixed(0):"-";
-      table+=`<tr>
+    var val=dati[d];
+    var deficitSurplus=(val.calorieEff)?(val.calorieEff-val.calorieTotali).toFixed(0):"-";
+    table+=`<tr>
       <td>${d}</td>
       <td>${val.calorieTotali.toFixed(0)}</td>
       <td>${val.calorieTotali.toFixed(0)}</td>
@@ -203,27 +316,27 @@ function downloadExcel(){
       <td>${val.peso?val.peso.toFixed(1):"-"}</td>
       <td>${val.calorieEff?val.calorieEff.toFixed(0):"-"}</td>
       <td>${deficitSurplus}</td>
-      </tr>`;
+    </tr>`;
   });
   table+=`</table>`;
-  var blob=new Blob([`<html><body>${table}</body></html>`],{type:"application/vnd.ms-excel"});
-  var link=document.createElement("a");
-  link.href=URL.createObjectURL(blob);
-  link.download="SettimanaNutrizione.xls";
+  var blob = new Blob([`<html><body>${table}</body></html>`], {type:"application/vnd.ms-excel"});
+  var link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "SettimanaNutrizione.xls";
   link.click();
 }
 
-// GRAFICI
-var calorieChart = new Chart(document.getElementById("calorieChart"), {type:'bar',data:{labels:[],datasets:[{label:'Calorie',data:[],backgroundColor:'#ff5252'}]},options:{responsive:true,plugins:{legend:{display:false}}}});
-var macroChart = new Chart(document.getElementById("macroChart"), {type:'bar',data:{labels:[],datasets:[{label:'Proteine (g)',data:[],backgroundColor:'#2196F3'},{label:'Carbo (g)',data:[],backgroundColor:'#4CAF50'},{label:'Grassi (g)',data:[],backgroundColor:'#FF9800'}]},options:{responsive:true,plugins:{tooltip:{mode:'index',intersect:false},legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
-var pesoChart = new Chart(document.getElementById("pesoChart"), {type:'bar',data:{labels:[],datasets:[{label:'Peso (kg)',data:[],backgroundColor:'#9C27B0'}]},options:{responsive:true,scales:{y:{beginAtZero:false}}}});
+// ===================== GRAFICI =====================
+var calorieChart = new Chart(document.getElementById("calorieChart"), {type:'bar', data:{labels:[], datasets:[{label:'Calorie', data:[], backgroundColor:'#ff5252'}]}, options:{responsive:true, plugins:{legend:{display:false}}}});
+var macroChart = new Chart(document.getElementById("macroChart"), {type:'bar', data:{labels:[], datasets:[{label:'Proteine (g)', data:[], backgroundColor:'#2196F3'},{label:'Carbo (g)', data:[], backgroundColor:'#4CAF50'},{label:'Grassi (g)', data:[], backgroundColor:'#FF9800'}]}, options:{responsive:true, plugins:{tooltip:{mode:'index', intersect:false}, legend:{position:'top'}}, scales:{x:{stacked:true},y:{stacked:true, beginAtZero:true}}}});
+var pesoChart = new Chart(document.getElementById("pesoChart"), {type:'bar', data:{labels:[], datasets:[{label:'Peso (kg)', data:[], backgroundColor:'#9C27B0'}]}, options:{responsive:true, scales:{y:{beginAtZero:false}}}});
 
 function aggiorna(){
   var tbody=document.getElementById("tabella"); tbody.innerHTML="";
-  var totCal=0,totPro=0,totCarb=0,totGrass=0,pesoTot=0,pesoCount=0;
-  var labels=[],calData=[],proData=[],carbData=[],grassData=[],pesoData=[];
+  var totCal=0, totPro=0, totCarb=0, totGrass=0, pesoTot=0, pesoCount=0;
+  var labels=[], calData=[], proData=[], carbData=[], grassData=[], pesoData=[];
   var dateKeys = Object.keys(dati).sort();
-  if(!mostraStoricoCompleto){ dateKeys = dateKeys.slice(-7); } // ultimi 7 giorni
+  if(!mostraStoricoCompleto){ dateKeys = dateKeys.slice(-7); }
   dateKeys.forEach(d=>{
     var val=dati[d];
     var deficitSurplus=(val.calorieEff)?(val.calorieEff-val.calorieTotali).toFixed(0):"-";
@@ -237,24 +350,28 @@ function aggiorna(){
       <td>${val.peso?val.peso.toFixed(1):"-"}</td>
       <td><input type="number" value="${val.calorieEff||''}" onchange="aggiornaCalorieEff('${d}',this.value)" style="width:80px;"></td>
       <td>${deficitSurplus}</td>
-      </tr>`;
-    totCal+=val.calorieTotali; totPro+=val.proteine; totCarb+=val.carbo; totGrass+=val.grassi;
-    if(val.peso){pesoTot+=val.peso;pesoCount++;}
+    </tr>`;
+    totCal += val.calorieTotali; totPro += val.proteine; totCarb += val.carbo; totGrass += val.grassi;
+    if(val.peso){pesoTot += val.peso; pesoCount++;}
     labels.push(d); calData.push(val.calorieTotali); proData.push(val.proteine); carbData.push(val.carbo); grassData.push(val.grassi); pesoData.push(val.peso);
   });
-  document.getElementById("totCal").innerText=totCal.toFixed(0);
-  document.getElementById("totPro").innerText=totPro.toFixed(1);
-  document.getElementById("totCarb").innerText=totCarb.toFixed(1);
-  document.getElementById("totGrass").innerText=totGrass.toFixed(1);
-  document.getElementById("mediaPeso").innerText=pesoCount>0?"Media peso settimanale: "+(pesoTot/pesoCount).toFixed(2)+" kg":"Media peso settimanale: -";
-  
-  calorieChart.data.labels=labels; calorieChart.data.datasets[0].data=calData; calorieChart.update();
-  macroChart.data.labels=labels; macroChart.data.datasets[0].data=proData; macroChart.data.datasets[1].data=carbData; macroChart.data.datasets[2].data=grassData; macroChart.update();
-  pesoChart.data.labels=labels; pesoChart.data.datasets[0].data=pesoData; pesoChart.update();
+  document.getElementById("totCal").innerText = totCal.toFixed(0);
+  document.getElementById("totPro").innerText = totPro.toFixed(1);
+  document.getElementById("totCarb").innerText = totCarb.toFixed(1);
+  document.getElementById("totGrass").innerText = totGrass.toFixed(1);
+  document.getElementById("mediaPeso").innerText = pesoCount>0 ? "Media peso settimanale: "+(pesoTot/pesoCount).toFixed(2)+" kg" : "Media peso settimanale: -";
+
+  calorieChart.data.labels = labels; calorieChart.data.datasets[0].data = calData; calorieChart.update();
+  macroChart.data.labels = labels; macroChart.data.datasets[0].data = proData; macroChart.data.datasets[1].data = carbData; macroChart.data.datasets[2].data = grassData; macroChart.update();
+  pesoChart.data.labels = labels; pesoChart.data.datasets[0].data = pesoData; pesoChart.update();
 }
 
-aggiorna();
+// Inizializza grafici con eventuali dati salvati localmente
+if(localStorage.getItem("settimana")){
+  window.dati = JSON.parse(localStorage.getItem("settimana"));
+  aggiorna();
+}
 </script>
-</div>
+
 </body>
 </html>
