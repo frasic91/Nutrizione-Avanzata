@@ -5,61 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nutrition Tracker Cloud</title>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-<script>
-  // Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyAgObxcbvQfmbDrTkD8c1qE-iyxIwwDDmM",
-    authDomain: "libreria-24a25.firebaseapp.com",
-    projectId: "libreria-24a25",
-    storageBucket: "libreria-24a25.firebasestorage.app",
-    messagingSenderId: "176468553745",
-    appId: "1:176468553745:web:e22ee006840027fd2e41b0",
-    measurementId: "G-15PLYMT6SS"
-  };
-
-  // Inizializza Firebase
-  firebase.initializeApp(firebaseConfig);
-  const auth = firebase.auth();
-  const db = firebase.firestore();
-  
-  const loginBox = document.getElementById("loginBox");
-  const appContainer = document.getElementById("app");
-
-  // Mostra/nascondi app in base allo stato login
-  auth.onAuthStateChanged(user => {
-    if(user){
-      loginBox.style.display = "none";
-      appContainer.style.display = "block";
-      console.log("Utente loggato:", user.uid);
-      // qui chiami caricaDati() se vuoi
-    } else {
-      loginBox.style.display = "block";
-      appContainer.style.display = "none";
-    }
-  });
-
-  function login(){
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    auth.signInWithEmailAndPassword(email,password)
-      .catch(err => document.getElementById("loginMsg").innerText = err.message);
-  }
-
-  function signup(){
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    auth.createUserWithEmailAndPassword(email,password)
-      .catch(err => document.getElementById("loginMsg").innerText = err.message);
-  }
-
-  function logout(){
-    auth.signOut();
-  }
-</script>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -164,6 +113,19 @@ canvas{margin-top:30px;background:#fff;border-radius:15px;padding:15px;box-shado
 <canvas id="pesoChart"></canvas>
 
 <script>
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyAgObxcbvQfmbDrTkD8c1qE-iyxIwwDDmM",
+  authDomain: "libreria-24a25.firebaseapp.com",
+  projectId: "libreria-24a25",
+  storageBucket: "libreria-24a25.firebasestorage.app",
+  messagingSenderId: "176468553745",
+  appId: "1:176468553745:web:e22ee006840027fd2e41b0",
+  measurementId: "G-15PLYMT6SS"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
 // variabili globali
 let dati={}, userUID=null, mostraStoricoCompleto=false;
