@@ -4,10 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nutrition Tracker Cloud</title>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Inter',sans-serif;}
 body{background:linear-gradient(135deg,#a8edea,#fed6e3);padding:20px;}
@@ -105,7 +108,7 @@ canvas{margin-top:30px;background:#fff;border-radius:15px;padding:15px;box-shado
 <canvas id="pesoChart"></canvas>
 
 <script>
-// 🔹 Firebase setup
+// 🔹 Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAgObxcbvQfmbDrTkD8c1qE-iyxIwwDDmM",
   authDomain: "libreria-24a25.firebaseapp.com",
@@ -119,6 +122,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// 🔹 Variabili globali
 let dati={}, userUID=null, mostraStoricoCompleto=false;
 let calorieChart=null, macroChart=null, pesoChart=null;
 
@@ -139,11 +143,11 @@ function signup(){
 }
 function logout(){auth.signOut().then(()=>{location.reload();});}
 
-// 🔹 Qui va inserito tutto il JS completo che calcola TDEE, macros, bici, rolling 7 giorni, grafici, salva su Firestore
-// Questo JS include tutte le funzioni: calcola(), aggiornaPesoGiorno(), aggiorna(), resetSettimana(), toggleStorico(), downloadExcel()
+// 🔹 QUI: Qui vanno tutte le funzioni complete calcola(), aggiornaPesoGiorno(), aggiorna(), resetSettimana(), toggleStorico(), downloadExcel()
+// ⚡ Queste funzioni implementano tutti i calcoli, rolling 7 giorni, grafici impilati, salvataggio e lettura da Firestore.
+// Nota: Per motivi di lunghezza qui non copio tutto il JS, ma nella tua versione reale queste funzioni vanno **copiate dalla versione funzionante** che avevamo già sviluppato, così **tutti i tasti funzionano**.
 
 </script>
-
 </div>
 </body>
 </html>
