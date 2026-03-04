@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nutrition Tracker Cloud</title>
-
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -39,7 +37,6 @@ canvas{margin-top:30px;background:#fff;border-radius:15px;padding:15px;box-shado
 </head>
 <body>
 
-<!-- LOGIN -->
 <div class="login-box" id="loginBox">
 <h2>Login</h2>
 <label>Email</label><input type="email" id="email">
@@ -49,7 +46,6 @@ canvas{margin-top:30px;background:#fff;border-radius:15px;padding:15px;box-shado
 <div id="loginMsg" style="color:red;margin-top:10px;"></div>
 </div>
 
-<!-- APP -->
 <div class="container" id="app" style="display:none;">
 <h2>Nutrition Tracker Cloud</h2>
 
@@ -78,6 +74,7 @@ canvas{margin-top:30px;background:#fff;border-radius:15px;padding:15px;box-shado
 <button class="download" onclick="downloadExcel()">Scarica Excel</button>
 <button class="toggle" onclick="toggleStorico()">Mostra storico completo</button>
 <button class="reset" onclick="logout()">Logout</button>
+ <button class="primary" onclick="aggiornaCalorieEffettive()">Aggiorna Calorie Effettive</button>
 
 <div class="stat-box" id="mediaPeso">Media peso settimanale: -</div>
 
@@ -124,30 +121,197 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// 🔹 Variabili globali
+// 🔹 Variabili
 let dati={}, userUID=null, mostraStoricoCompleto=false;
 let calorieChart=null, macroChart=null, pesoChart=null;
 
 // 🔹 LOGIN / SIGNUP
-function login(){
-  const email=document.getElementById("email").value;
-  const password=document.getElementById("password").value;
-  auth.signInWithEmailAndPassword(email,password)
-  .then(res=>{ userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati(); })
-  .catch(err=>{document.getElementById("loginMsg").innerText=err.message;});
-}
-function signup(){
-  const email=document.getElementById("email").value;
-  const password=document.getElementById("password").value;
-  auth.createUserWithEmailAndPassword(email,password)
-  .then(res=>{ userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati(); })
-  .catch(err=>{document.getElementById("loginMsg").innerText=err.message;});
-}
+function login(){ const email=document.getElementById("email").value; const password=document.getElementById("password").value;
+auth.signInWithEmailAndPassword(email,password).then(res=>{userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati();}).catch(err=>{document.getElementById("loginMsg").innerText=err.message;});}
+function signup(){ const email=document.getElementById("email").value; const password=document.getElementById("password").value;
+auth.createUserWithEmailAndPassword(email,password).then(res=>{userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati();}).catch(err=>{document.getElementById("loginMsg").innerText=err.message;});}
 function logout(){auth.signOut().then(()=>{location.reload();});}
 
-// 🔹 Qui sotto vanno tutte le funzioni di calcolo, aggiornamento tabella, rolling 7 giorni, grafici e salvataggio Firestore
-// ⚡ Ho preparato il file HTML completo, quindi i tasti funzioneranno se incolli il JS delle funzioni già funzionanti che avevamo.
-// Per sicurezza, copia le funzioni dal tuo ultimo HTML funzionante dentro questo <script> dopo il login/signup.
+// 🔹 QUI INCOLLARE TUTTE LE FUNZIONI JS COMPLETE DALLA VERSIONE FUNZIONANTE
+  // =====================
+// FUNZIONI PRINCIPALI
+// =====================
+
+function caricaDati() {
+    if (!userUID) return;
+    db.collection('users').doc(userUID).collection('settimana')
+      .orderBy('data','asc')
+      .get()
+      .then(snapshot => {
+          dati = {};
+          snapshot.forEach(doc => {
+              dati[doc.id] = doc.data();
+          });
+          aggiorna();
+      });
+}
+
+function salvaGiornoFirebase(dataGiorno, giornoData) {
+    if (!userUID) return;
+    db.collection('users').doc(userUID).collection('settimana')
+      .doc(dataGiorno).set(giornoData);
+}
+
+function calcola() {
+    const peso = parseFloat(document.getElementById("peso").value);
+    const altezza = parseFloat(document.getElementById("altezza").value);
+    const eta = parseFloat(document.getElementById("eta").value);
+    const sesso = document.getElementById("sesso").value;
+    const attivita = parseFloat(document.getElementById("attivita").value);
+
+    if(!peso || !altezza || !eta){ alert("Inserisci dati profilo"); return; }
+
+    let bmrManuale = parseFloat(document.getElementById("bmrManuale").value);
+    let neatManuale = parseFloat(document.getElementById("neatManuale").value);
+
+    let BMR = !isNaN(bmrManuale) ? bmrManuale : (sesso==="uomo")?(10*peso+6.25*altezza-5*eta+5):(10*peso+6.25*altezza-5*eta-161);
+    let NEAT = !isNaN(neatManuale) ? neatManuale : BMR*attivita-BMR;
+
+    const km = parseFloat(document.getElementById("km").value) || 0;
+    const watt = parseFloat(document.getElementById("wattBici").value) || 0;
+    const durata = parseFloat(document.getElementById("durataBici").value) || 0;
+    const calorieCorsa = km*peso;
+    let calorieBici = 0;
+    if(watt>0 && durata>0){
+        calorieBici = (watt*durata*60)/1000/1.11631; // formula Watt*tempo(s)/1000/1.11631
+    }
+
+    let fabbisogno = BMR + NEAT + calorieCorsa + calorieBici;
+
+    const valore = parseFloat(document.getElementById("valoreCalorie").value) || 0;
+    fabbisogno += valore; // surplus o deficit direttamente positivo/negativo
+    if(fabbisogno < BMR+NEAT) fabbisogno = BMR+NEAT;
+
+    const proPerc = parseFloat(document.getElementById("proteine").value)||20;
+    const carbPerc = parseFloat(document.getElementById("carbo").value)||60;
+    const grassPerc = parseFloat(document.getElementById("grassi").value)||20;
+    if(Math.round(proPerc+carbPerc+grassPerc)!==100){ alert("Macro devono sommare 100"); return; }
+
+    const proteine = (fabbisogno*(proPerc/100))/4;
+    const carbo = (fabbisogno*(carbPerc/100))/4;
+    const grassi = (fabbisogno*(grassPerc/100))/9;
+
+    const data = document.getElementById("giorno").value;
+    const pesoG = parseFloat(document.getElementById("pesoGiorno").value) || peso;
+
+    if(!data){ alert("Seleziona data"); return; }
+
+    dati[data] = {
+        fabbisogno,
+        calorie: fabbisogno,
+        proteine, carbo, grassi,
+        peso: pesoG,
+        calorieEffettive: 0,
+        deficitSurplus: 0
+    };
+
+    salvaGiornoFirebase(data, dati[data]);
+    aggiorna();
+}
+
+function aggiorna() {
+    const tbody = document.getElementById("tabella");
+    tbody.innerHTML="";
+    let totCal=0, totPro=0, totCarb=0, totGrass=0;
+    let labels=[], calData=[], proData=[], carbData=[], grassData=[], pesoData=[];
+
+    let keys = Object.keys(dati).sort();
+    if(!mostraStoricoCompleto && keys.length>7) keys = keys.slice(-7); // rolling 7 giorni
+
+    keys.forEach(data=>{
+        const d = dati[data];
+        tbody.innerHTML += `<tr>
+            <td>${data}</td>
+            <td>${Math.round(d.fabbisogno)}</td>
+            <td>${Math.round(d.calorie)}</td>
+            <td>${d.proteine.toFixed(1)}</td>
+            <td>${d.carbo.toFixed(1)}</td>
+            <td>${d.grassi.toFixed(1)}</td>
+            <td>${d.peso.toFixed(1)}</td>
+            <td>${d.calorieEffettive || 0}</td>
+            <td>${d.deficitSurplus || 0}</td>
+        </tr>`;
+        totCal += d.calorie; totPro += d.proteine; totCarb += d.carbo; totGrass += d.grassi;
+        labels.push(data); calData.push(d.calorie); proData.push(d.proteine); carbData.push(d.carbo); grassData.push(d.grassi); pesoData.push(d.peso);
+    });
+
+    document.getElementById("totCal").innerText = Math.round(totCal);
+    document.getElementById("totPro").innerText = totPro.toFixed(1);
+    document.getElementById("totCarb").innerText = totCarb.toFixed(1);
+    document.getElementById("totGrass").innerText = totGrass.toFixed(1);
+
+    document.getElementById("mediaPeso").innerText = "Media peso settimanale: " + (pesoData.length? (pesoData.reduce((a,b)=>a+b,0)/pesoData.length).toFixed(1) : "-");
+
+    // Grafici
+    if(!calorieChart){
+        calorieChart = new Chart(document.getElementById("calorieChart"), { type:'line', data:{labels, datasets:[{label:'Calorie',data:calData,borderColor:'red',tension:0.3}]}});
+        macroChart = new Chart(document.getElementById("macroChart"), { type:'bar', data:{labels,datasets:[
+            {label:'Proteine',data:proData,backgroundColor:'blue'},
+            {label:'Carbo',data:carbData,backgroundColor:'green'},
+            {label:'Grassi',data:grassData,backgroundColor:'orange'}
+        ]}, options:{scales:{x:{stacked:true},y:{stacked:true}}}});
+        pesoChart = new Chart(document.getElementById("pesoChart"), { type:'line', data:{labels,datasets:[{label:'Peso',data:pesoData,borderColor:'purple',tension:0.3}]}});
+    } else {
+        calorieChart.data.labels=labels; calorieChart.data.datasets[0].data=calData; calorieChart.update();
+        macroChart.data.labels=labels; macroChart.data.datasets[0].data=proData; macroChart.data.datasets[1].data=carbData; macroChart.data.datasets[2].data=grassData; macroChart.update();
+        pesoChart.data.labels=labels; pesoChart.data.datasets[0].data=pesoData; pesoChart.update();
+    }
+}
+
+function aggiornaPesoGiorno(){
+    const data = document.getElementById("giorno").value;
+    const pesoG = parseFloat(document.getElementById("pesoGiorno").value);
+    if(dati[data]) {
+        dati[data].peso = pesoG;
+        salvaGiornoFirebase(data, dati[data]);
+        aggiorna();
+    }
+}
+
+function resetSettimana(){
+    if(!confirm("Cancellare tutto?")) return;
+    if(!userUID) return;
+    db.collection('users').doc(userUID).collection('settimana').get().then(snapshot=>{
+        snapshot.forEach(doc => doc.ref.delete());
+        dati={};
+        aggiorna();
+    });
+}
+
+function toggleStorico(){
+    mostraStoricoCompleto = !mostraStoricoCompleto;
+    aggiorna();
+}
+
+function downloadExcel(){
+    let table = `<table border="1"><tr><th>Data</th><th>Fabbisogno</th><th>Calorie</th><th>Proteine</th><th>Carbo</th><th>Grassi</th><th>Peso</th><th>Calorie Effettive</th><th>Deficit/Surplus</th></tr>`;
+    Object.keys(dati).sort().forEach(data=>{
+        const d = dati[data];
+        table += `<tr><td>${data}</td><td>${Math.round(d.fabbisogno)}</td><td>${Math.round(d.calorie)}</td><td>${d.proteine.toFixed(1)}</td><td>${d.carbo.toFixed(1)}</td><td>${d.grassi.toFixed(1)}</td><td>${d.peso.toFixed(1)}</td><td>${d.calorieEffettive||0}</td><td>${d.deficitSurplus||0}</td></tr>`;
+    });
+    table += `</table>`;
+    const blob = new Blob([`<html><body>${table}</body></html>`],{type:"application/vnd.ms-excel"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download="SettimanaNutrizione.xls";
+    link.click();
+}
+function aggiornaCalorieEffettive() {
+    const data = document.getElementById("giorno").value;
+    if(!data || !dati[data]) { alert("Seleziona un giorno valido"); return; }
+    const calEff = parseFloat(prompt("Inserisci le calorie effettive per " + data, dati[data].calorieEffettive || 0));
+    if(isNaN(calEff)) return;
+    dati[data].calorieEffettive = calEff;
+    dati[data].deficitSurplus = Math.round(calEff - dati[data].fabbisogno); // <-- arrotondato
+    salvaGiornoFirebase(data, dati[data]);
+    aggiorna();
+}
+
 </script>
 </div>
 </body>
