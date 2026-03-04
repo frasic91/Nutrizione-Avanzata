@@ -107,7 +107,7 @@ canvas{margin-top:30px;background:#fff;border-radius:15px;padding:15px;box-shado
 <canvas id="pesoChart"></canvas>
 
 <script>
-// Firebase config
+// 🔹 Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAgObxcbvQfmbDrTkD8c1qE-iyxIwwDDmM",
   authDomain: "libreria-24a25.firebaseapp.com",
@@ -121,18 +121,27 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-// Variabili
 let dati={}, userUID=null, mostraStoricoCompleto=false;
 let calorieChart=null, macroChart=null, pesoChart=null;
 
-// LOGIN / SIGNUP
-function login(){ const email=document.getElementById("email").value; const password=document.getElementById("password").value;
-auth.signInWithEmailAndPassword(email,password).then(res=>{userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati();}).catch(err=>{document.getElementById("loginMsg").innerText=err.message;});}
-function signup(){ const email=document.getElementById("email").value; const password=document.getElementById("password").value;
-auth.createUserWithEmailAndPassword(email,password).then(res=>{userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati();}).catch(err=>{document.getElementById("loginMsg").innerText=err.message;});}
+// 🔹 LOGIN / SIGNUP
+function login(){ 
+  const email=document.getElementById("email").value; 
+  const password=document.getElementById("password").value;
+  auth.signInWithEmailAndPassword(email,password)
+    .then(res=>{userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati();})
+    .catch(err=>{document.getElementById("loginMsg").innerText=err.message;});
+}
+function signup(){ 
+  const email=document.getElementById("email").value; 
+  const password=document.getElementById("password").value;
+  auth.createUserWithEmailAndPassword(email,password)
+    .then(res=>{userUID=res.user.uid; document.getElementById("loginBox").style.display="none"; document.getElementById("app").style.display="block"; caricaDati();})
+    .catch(err=>{document.getElementById("loginMsg").innerText=err.message;});
+}
 function logout(){auth.signOut().then(()=>{location.reload();});}
 
-// FUNZIONI PRINCIPALI
+// 🔹 FUNZIONI DATI E GRAFICI
 function caricaDati() {
     if (!userUID) return;
     db.collection('users').doc(userUID).collection('settimana')
@@ -151,38 +160,58 @@ function salvaGiornoFirebase(dataGiorno, giornoData) {
       .doc(dataGiorno).set(giornoData);
 }
 
+// 🔹 CALCOLI
 function calcola() {
     const peso = parseFloat(document.getElementById("peso").value);
     const altezza = parseFloat(document.getElementById("altezza").value);
     const eta = parseFloat(document.getElementById("eta").value);
     const sesso = document.getElementById("sesso").value;
     const attivita = parseFloat(document.getElementById("attivita").value);
+
     if(!peso || !altezza || !eta){ alert("Inserisci dati profilo"); return; }
+
     let bmrManuale = parseFloat(document.getElementById("bmrManuale").value);
     let neatManuale = parseFloat(document.getElementById("neatManuale").value);
+
     let BMR = !isNaN(bmrManuale) ? bmrManuale : (sesso==="uomo")?(10*peso+6.25*altezza-5*eta+5):(10*peso+6.25*altezza-5*eta-161);
     let NEAT = !isNaN(neatManuale) ? neatManuale : BMR*attivita-BMR;
+
     const km = parseFloat(document.getElementById("km").value) || 0;
     const watt = parseFloat(document.getElementById("wattBici").value) || 0;
     const durata = parseFloat(document.getElementById("durataBici").value) || 0;
     const calorieCorsa = km*peso;
     let calorieBici = 0;
-    if(watt>0 && durata>0){ calorieBici = (watt*durata*60)/1000/1.11631; } // formula Watt*tempo(s)/1000/1.11631
+    if(watt>0 && durata>0){ calorieBici = (watt*durata*60)/1000/1.11631; }
+
     let fabbisogno = BMR + NEAT + calorieCorsa + calorieBici;
+
     const valore = parseFloat(document.getElementById("valoreCalorie").value) || 0;
-    fabbisogno += valore;
+    fabbisogno += valore; 
     if(fabbisogno < BMR+NEAT) fabbisogno = BMR+NEAT;
+
     const proPerc = parseFloat(document.getElementById("proteine").value)||20;
     const carbPerc = parseFloat(document.getElementById("carbo").value)||60;
     const grassPerc = parseFloat(document.getElementById("grassi").value)||20;
     if(Math.round(proPerc+carbPerc+grassPerc)!==100){ alert("Macro devono sommare 100"); return; }
+
     const proteine = (fabbisogno*(proPerc/100))/4;
     const carbo = (fabbisogno*(carbPerc/100))/4;
     const grassi = (fabbisogno*(grassPerc/100))/9;
+
     const data = document.getElementById("giorno").value;
     const pesoG = parseFloat(document.getElementById("pesoGiorno").value) || peso;
+
     if(!data){ alert("Seleziona data"); return; }
-    dati[data] = { fabbisogno, calorie: fabbisogno, proteine, carbo, grassi, peso: pesoG, calorieEffettive: 0, deficitSurplus: 0 };
+
+    dati[data] = {
+        fabbisogno,
+        calorie: fabbisogno,
+        proteine, carbo, grassi,
+        peso: pesoG,
+        calorieEffettive: 0,
+        deficitSurplus: 0
+    };
+
     salvaGiornoFirebase(data, dati[data]);
     aggiorna();
 }
@@ -192,8 +221,10 @@ function aggiorna() {
     tbody.innerHTML="";
     let totCal=0, totPro=0, totCarb=0, totGrass=0;
     let labels=[], calData=[], proData=[], carbData=[], grassData=[], pesoData=[];
+
     let keys = Object.keys(dati).sort();
-    if(!mostraStoricoCompleto && keys.length>7) keys = keys.slice(-7);
+    if(!mostraStoricoCompleto && keys.length>7) keys = keys.slice(-7); // rolling 7 giorni
+
     keys.forEach(data=>{
         const d = dati[data];
         tbody.innerHTML += `<tr>
@@ -210,48 +241,58 @@ function aggiorna() {
         totCal += d.calorie; totPro += d.proteine; totCarb += d.carbo; totGrass += d.grassi;
         labels.push(data); calData.push(d.calorie); proData.push(d.proteine); carbData.push(d.carbo); grassData.push(d.grassi); pesoData.push(d.peso);
     });
+
     document.getElementById("totCal").innerText = Math.round(totCal);
     document.getElementById("totPro").innerText = totPro.toFixed(1);
     document.getElementById("totCarb").innerText = totCarb.toFixed(1);
     document.getElementById("totGrass").innerText = totGrass.toFixed(1);
+
     document.getElementById("mediaPeso").innerText = "Media peso settimanale: " + (pesoData.length? (pesoData.reduce((a,b)=>a+b,0)/pesoData.length).toFixed(1) : "-");
+
+    // Grafici
     aggiornaGrafici(labels, calData, proData, carbData, grassData, pesoData);
 }
 
-// La funzione aggiornaGrafici la aggiorniamo con istogrammi come ti ho mostrato
-function aggiornaGrafici(labels, calData, proData, carbData, grassData, pesoData) {
+function aggiornaGrafici(labels, calData, proData, carbData, grassData, pesoData){
     // Calorie istogramma
     if(!calorieChart){
         calorieChart = new Chart(document.getElementById("calorieChart"), {
             type:'bar',
-            data:{labels,datasets:[{label:'Calorie',data:calData,backgroundColor:'rgba(255,99,132,0.6)',borderColor:'red',borderWidth:1}]},
-            options:{scales:{y:{beginAtZero:true}}}
+            data:{labels, datasets:[{label:'Calorie', data:calData, backgroundColor:'red'}]}
         });
     } else { calorieChart.data.labels = labels; calorieChart.data.datasets[0].data = calData; calorieChart.update(); }
 
-    // Macro stacked
+    // Macros stacked
     if(!macroChart){
         macroChart = new Chart(document.getElementById("macroChart"), {
             type:'bar',
-            data:{labels,datasets:[
+            data:{labels, datasets:[
                 {label:'Proteine', data:proData, backgroundColor:'blue'},
                 {label:'Carbo', data:carbData, backgroundColor:'green'},
                 {label:'Grassi', data:grassData, backgroundColor:'orange'}
             ]},
             options:{scales:{x:{stacked:true},y:{stacked:true}}}
         });
-    } else { macroChart.data.labels = labels; macroChart.data.datasets[0].data = proData; macroChart.data.datasets[1].data = carbData; macroChart.data.datasets[2].data = grassData; macroChart.update(); }
+    } else {
+        macroChart.data.labels = labels;
+        macroChart.data.datasets[0].data = proData;
+        macroChart.data.datasets[1].data = carbData;
+        macroChart.data.datasets[2].data = grassData;
+        macroChart.update();
+    }
 
     // Peso istogramma
     if(!pesoChart){
         pesoChart = new Chart(document.getElementById("pesoChart"), {
             type:'bar',
-            data:{labels,datasets:[{label:'Peso (kg)', data:pesoData, backgroundColor:'rgba(128,0,128,0.6)', borderColor:'purple', borderWidth:1}]},
-            options:{scales:{y:{beginAtZero:true}}}
+            data:{labels, datasets:[{label:'Peso', data:pesoData, backgroundColor:'purple'}]}
         });
     } else { pesoChart.data.labels = labels; pesoChart.data.datasets[0].data = pesoData; pesoChart.update(); }
 }
 
+// Aggiorna solo peso
 function aggiornaPesoGiorno(){
     const data = document.getElementById("giorno").value;
-    const pesoG = parseFloat(document
+    const pesoG = parseFloat(document.getElementById("pesoGiorno").value);
+    if(dati[data]) {
+        dati[data
