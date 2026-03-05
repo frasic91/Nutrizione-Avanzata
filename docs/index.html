@@ -180,6 +180,7 @@ color:#d32f2f;
 <input type="password" id="passwordLogin">
 
 <button class="primary" onclick="login()">Accedi</button>
+ <button class="toggle" onclick="resetPassword()">🔑 Password dimenticata?</button>
 
 </div>
 
@@ -291,7 +292,7 @@ color:#d32f2f;
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword }
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail }
 from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 
 const firebaseConfig = {
@@ -334,6 +335,25 @@ document.getElementById("loginMessage").innerText="Registrazione completata"
 .catch(e=>{
 document.getElementById("loginMessage").innerText=e.message
 }) 
+}
+
+window.resetPassword = function(){
+
+const email=document.getElementById("emailLogin").value
+
+if(!email){
+alert("Inserisci la tua email per recuperare la password")
+return
+}
+
+sendPasswordResetEmail(auth,email)
+.then(()=>{
+document.getElementById("loginMessage").innerText="Email di recupero inviata!"
+})
+.catch(e=>{
+document.getElementById("loginMessage").innerText=e.message
+})
+
 }
   
 window.logout = function() {
