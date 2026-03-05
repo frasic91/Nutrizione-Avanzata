@@ -124,18 +124,31 @@ margin-top:30px;
 
 <h2>Nutrition Tracker Pro</h2>
 
-<div id="loginContainer">
+<div id="loginContainer" style="display:flex;gap:40px;justify-content:center;margin-bottom:30px;flex-wrap:wrap;">
 
-<label>Email</label>
-<input type="email" id="email">
+  <!-- Login -->
+  <div style="flex:1;min-width:250px;padding:20px;background:#e0f7fa;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    <h3 style="text-align:center;margin-bottom:15px;">Accedi</h3>
+    <label>Email</label>
+    <input type="email" id="emailLogin">
+    <label>Password</label>
+    <input type="password" id="passwordLogin">
+    <button class="primary" onclick="login()">Accedi</button>
+  </div>
 
-<label>Password</label>
-<input type="password" id="password">
+  <!-- Registrazione -->
+  <div style="flex:1;min-width:250px;padding:20px;background:#fff3e0;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);">
+    <h3 style="text-align:center;margin-bottom:15px;">Registrati</h3>
+    <label>Email</label>
+    <input type="email" id="emailRegister">
+    <label>Password</label>
+    <input type="password" id="passwordRegister">
+    <button class="reset" onclick="register()">Registrati</button>
+  </div>
 
-<button class="primary" onclick="login()">Accedi</button>
-<button class="reset" onclick="register()">Registrati</button>
+</div>
 
-<p id="loginMessage"></p>
+<p id="loginMessage" style="text-align:center;color:red;margin-top:10px;"></p>
 
 </div>
 
@@ -242,33 +255,30 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 window.login = function(){
+  const email=document.getElementById("emailLogin").value;
+  const password=document.getElementById("passwordLogin").value;
 
-const email=document.getElementById("email").value
-const password=document.getElementById("password").value
-
-signInWithEmailAndPassword(auth,email,password)
-.then(()=>{
-document.getElementById("loginContainer").style.display="none"
-document.getElementById("appContent").style.display="block"
-})
-.catch(e=>{
-document.getElementById("loginMessage").innerText=e.message
-})
-
+  signInWithEmailAndPassword(auth,email,password)
+    .then(()=>{
+      document.getElementById("loginContainer").style.display="none";
+      document.getElementById("appContent").style.display="block";
+    })
+    .catch(e=>{
+      document.getElementById("loginMessage").innerText=e.message;
+    });
 }
 
 window.register = function(){
+  const email=document.getElementById("emailRegister").value;
+  const password=document.getElementById("passwordRegister").value;
 
-const email=document.getElementById("email").value
-const password=document.getElementById("password").value
-
-createUserWithEmailAndPassword(auth,email,password)
-.then(()=>{
-document.getElementById("loginMessage").innerText="Registrazione completata"
-})
-.catch(e=>{
-document.getElementById("loginMessage").innerText=e.message
-}) 
+  createUserWithEmailAndPassword(auth,email,password)
+    .then(()=>{
+      document.getElementById("loginMessage").innerText="Registrazione completata";
+    })
+    .catch(e=>{
+      document.getElementById("loginMessage").innerText=e.message;
+    });
 }
   
 window.logout = function() {
