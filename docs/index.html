@@ -294,6 +294,8 @@ color:#d32f2f;
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail }
 from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, collection }
+from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 const firebaseConfig = {
 apiKey: "AIzaSyAgObxcbvQfmbDrTkD8c1qE-iyxIwwDDmM",
@@ -306,6 +308,7 @@ appId: "1:176468553745:web:e22ee006840027fd2e41b0"
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 window.login = function(){
 
@@ -314,8 +317,12 @@ const password=document.getElementById("passwordLogin").value
 
 signInWithEmailAndPassword(auth,email,password)
 .then(()=>{
+
 document.getElementById("loginContainer").style.display="none"
 document.getElementById("appContent").style.display="block"
+
+caricaFirebase()   // ← QUI
+
 })
 .catch(e=>{
 document.getElementById("loginMessage").innerText=e.message
@@ -427,9 +434,13 @@ dati[dataG]={
   peso:pesoG,
   calorieEff:dati[dataG]?.calorieEff || null
 };
+
   localStorage.setItem("settimana",JSON.stringify(dati));
+  
+ salvaFirebase(dataG,dati[dataG]);
   aggiorna();
 }
+
 
 function aggiornaPesoGiorno(){
   var dataG = document.getElementById("giorno").value;
@@ -514,6 +525,56 @@ table+=`<tr>
   link.href=URL.createObjectURL(blob);
   link.download="SettimanaNutrizione.xls";
   link.click();
+}
+
+  
+ async function caricaFirebase(){
+
+const user = auth.currentUser;
+
+if(!user) return;
+
+const querySnapshot = await getDocs(collection(db,"utenti",user.uid,"giorni"));
+
+dati = {};
+
+querySnapshot.forEach((doc) => {
+
+dati[doc.id] = doc.data();
+
+});
+
+aggiorna();
+
+}
+
+async function salvaFirebase(data, valori){
+
+const user = auth.currentUser;
+
+if(!user){
+alert("Utente non autenticato");
+return;
+}
+}
+  
+  async function salvaFirebase(data, valori) {
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("Utente non autenticato");
+    return;
+  }
+
+  try {
+    await setDoc(
+      doc(db, "utenti", user.uid, "giorni", data),
+      valori
+    );
+    console.log("Salvato su Firebase");
+  } catch (e) {
+    console.error("Errore salvataggio", e);
+  }
 }
 
 // GRAFICI
