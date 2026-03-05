@@ -114,6 +114,49 @@ font-weight:600;
 canvas{
 margin-top:30px;
 }
+  
+  .login-wrapper{
+display:flex;
+gap:40px;
+justify-content:center;
+align-items:flex-start;
+flex-wrap:wrap;
+margin-bottom:30px;
+}
+
+.login-card,
+.register-card{
+flex:1;
+min-width:260px;
+max-width:350px;
+padding:30px;
+border-radius:20px;
+box-shadow:0 15px 30px rgba(0,0,0,0.15);
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.login-card{
+background:linear-gradient(135deg,#e3f2fd,#bbdefb);
+}
+
+.register-card{
+background:linear-gradient(135deg,#fff3e0,#ffe0b2);
+}
+
+.login-card h3,
+.register-card h3{
+text-align:center;
+margin-bottom:10px;
+}
+
+#loginMessage{
+text-align:center;
+margin-top:10px;
+font-weight:600;
+color:#d32f2f;
+}
 
 </style>
 </head>
@@ -124,31 +167,40 @@ margin-top:30px;
 
 <h2>Nutrition Tracker Pro</h2>
 
-<div id="loginContainer" style="display:flex;gap:40px;justify-content:center;margin-bottom:30px;flex-wrap:wrap;">
+<div id="loginContainer" class="login-wrapper">
 
-  <!-- Login -->
-  <div style="flex:1;min-width:250px;padding:20px;background:#e0f7fa;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);">
-    <h3 style="text-align:center;margin-bottom:15px;">Accedi</h3>
-    <label>Email</label>
-    <input type="email" id="emailLogin">
-    <label>Password</label>
-    <input type="password" id="passwordLogin">
-    <button class="primary" onclick="login()">Accedi</button>
-  </div>
+<div class="login-card">
 
-  <!-- Registrazione -->
-  <div style="flex:1;min-width:250px;padding:20px;background:#fff3e0;border-radius:15px;box-shadow:0 5px 15px rgba(0,0,0,0.1);">
-    <h3 style="text-align:center;margin-bottom:15px;">Registrati</h3>
-    <label>Email</label>
-    <input type="email" id="emailRegister">
-    <label>Password</label>
-    <input type="password" id="passwordRegister">
-    <button class="reset" onclick="register()">Registrati</button>
-  </div>
+<h3>🔐 Accedi</h3>
+
+<label>Email</label>
+<input type="email" id="emailLogin">
+
+<label>Password</label>
+<input type="password" id="passwordLogin">
+
+<button class="primary" onclick="login()">Accedi</button>
 
 </div>
 
-<p id="loginMessage" style="text-align:center;color:red;margin-top:10px;"></p>
+
+<div class="register-card">
+
+<h3>📝 Registrati</h3>
+
+<label>Email</label>
+<input type="email" id="emailRegister">
+
+<label>Password</label>
+<input type="password" id="passwordRegister">
+
+<button class="reset" onclick="register()">Registrati</button>
+
+</div>
+
+</div>
+
+<p id="loginMessage"></p>
 
 </div>
 
@@ -255,30 +307,33 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 window.login = function(){
-  const email=document.getElementById("emailLogin").value;
-  const password=document.getElementById("passwordLogin").value;
 
-  signInWithEmailAndPassword(auth,email,password)
-    .then(()=>{
-      document.getElementById("loginContainer").style.display="none";
-      document.getElementById("appContent").style.display="block";
-    })
-    .catch(e=>{
-      document.getElementById("loginMessage").innerText=e.message;
-    });
+const email=document.getElementById("emailLogin").value
+const password=document.getElementById("passwordLogin").value
+
+signInWithEmailAndPassword(auth,email,password)
+.then(()=>{
+document.getElementById("loginContainer").style.display="none"
+document.getElementById("appContent").style.display="block"
+})
+.catch(e=>{
+document.getElementById("loginMessage").innerText=e.message
+})
+
 }
 
 window.register = function(){
-  const email=document.getElementById("emailRegister").value;
-  const password=document.getElementById("passwordRegister").value;
 
-  createUserWithEmailAndPassword(auth,email,password)
-    .then(()=>{
-      document.getElementById("loginMessage").innerText="Registrazione completata";
-    })
-    .catch(e=>{
-      document.getElementById("loginMessage").innerText=e.message;
-    });
+const email=document.getElementById("emailRegister").value
+const password=document.getElementById("passwordRegister").value
+
+createUserWithEmailAndPassword(auth,email,password)
+.then(()=>{
+document.getElementById("loginMessage").innerText="Registrazione completata"
+})
+.catch(e=>{
+document.getElementById("loginMessage").innerText=e.message
+}) 
 }
   
 window.logout = function() {
