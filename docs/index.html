@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nutrition Tracker Pro</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
 <style>
 /* --- Stili rimangono identici al tuo esempio --- */
@@ -101,7 +102,17 @@ canvas{margin-top:30px;}
 <div><label>% Carbo</label><input type="number" id="carbo" value="60"></div>
 <div><label>% Grassi</label><input type="number" id="grassi" value="20"></div>
 </div>
-
+<!-- Grafico macro giorno corrente -->
+<div style="display:flex; justify-content:center; align-items:center; gap:40px; margin-bottom:20px;">
+    <canvas id="macroGiornoChart" style="max-width:300px;"></canvas>
+    <div id="macroValori" style="font-weight:bold; font-size:1rem; line-height:1.6;">
+        <!-- Qui appariranno valori g e calorie -->
+        Proteine: 0 g<br>
+        Carbo: 0 g<br>
+        Grassi: 0 g<br>
+        Calorie: 0 kcal
+    </div>
+</div>
 <button class="primary" onclick="calcola()">Salva Giorno</button>
 <button class="primary" onclick="aggiornaPesoGiorno()">Aggiorna Peso Giorno</button>
 <button class="reset" onclick="resetSettimana()">Reset</button>
@@ -140,7 +151,6 @@ canvas{margin-top:30px;}
 <canvas id="calorieChart"></canvas>
 <canvas id="macroChart"></canvas>
 <canvas id="pesoChart"></canvas>
- 
   <div id="storicoCompleto" style="display:none">
   <h3>📜 Storico completo</h3>
 
@@ -228,6 +238,32 @@ window.deleteDoc = deleteDoc;
 <script>
 var dati = JSON.parse(localStorage.getItem("settimana")) || {};
 var mostraStoricoCompleto = false;
+function inizializzaMacroGiornoChart() {
+    const ctx = document.getElementById("macroGiornoChart").getContext("2d");
+    return new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: ['Proteine (g)', 'Carbo (g)', 'Grassi (g)'],
+            datasets: [{
+                data: [0,0,0],
+                backgroundColor: ['#2196F3','#4CAF50','#FF9800']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.raw.toFixed(1) + ' g';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
 
 // --- LOGIN / REGISTER ---
 // --- LOGIN ---
@@ -247,6 +283,10 @@ function login() {
       document.getElementById("loginMessage").innerText = "";
       caricaFirebase();        // carica dati dall'utente
       sincronizzaRealtime();   // aggiorna in realtime eventuali modifiche su Firebase
+        // ✅ inizializza grafico torta
+    macroGiornoChart = inizializzaMacroGiornoChart();
+    const oggi = new Date().toISOString().split("T")[0];
+    aggiornaMacroGiorno(oggi);
     })
     .catch((e) => {
       console.log("Errore login:", e);
@@ -372,9 +412,37 @@ dati[dataG]={
   
  salvaFirebase(dataG,dati[dataG]);
   aggiorna();
+  aggiornaMacroGiorno(dataG); // aggiorna grafico a torta del giorno appena salvato
 }
 
+function aggiornaMacroGiorno(dataSelezionata) {
+    const val = dati[dataSelezionata];
 
+    if(val){
+        macroGiornoChart.data.datasets[0].data = [val.proteine, val.carbo, val.grassi];
+
+        // ✅ Aggiorna il box accanto alla torta
+        document.getElementById("macroValori").innerHTML = `
+            Proteine: ${val.proteine.toFixed(1)} g<br>
+            Carbo: ${val.carbo.toFixed(1)} g<br>
+            Grassi: ${val.grassi.toFixed(1)} g<br>
+            Calorie: ${val.calorieTotali.toFixed(0)} kcal
+        `;
+    } else {
+        // valori di default se non ci sono dati
+        macroGiornoChart.data.datasets[0].data = [0,0,0];
+        document.getElementById("macroValori").innerHTML = `
+            Proteine: 0 g<br>
+            Carbo: 0 g<br>
+            Grassi: 0 g<br>
+            Calorie: 0 kcal
+        `;
+    }
+
+    macroGiornoChart.update();
+}
+  
+  
 function aggiornaPesoGiorno(){
   var dataG = document.getElementById("giorno").value;
   var pesoG = parseFloat(document.getElementById("pesoGiorno").value);
@@ -481,19 +549,18 @@ function aggiornaStoricoCompleto() {
   const filtroMeseVal = document.getElementById("filtroMese").value;
   const filtroAnnoVal = document.getElementById("filtroAnno").value;
 
-  Object.keys(dati)
+  const giorniFiltrati = Object.keys(dati)
     .sort((a,b)=> new Date(a)-new Date(b))
-    .forEach(d => {
+    .filter(d => {
       const date = new Date(d);
       const mese = date.getMonth();
       const anno = date.getFullYear();
-
-      // Applica filtri
       if ((filtroMeseVal !== "" && parseInt(filtroMeseVal) !== mese) ||
-          (filtroAnnoVal !== "" && parseInt(filtroAnnoVal) !== anno)) {
-        return;
-      }
+          (filtroAnnoVal !== "" && parseInt(filtroAnnoVal) !== anno)) return false;
+      return true;
+    });
 
+  giorniFiltrati.forEach(d => {
       const val = dati[d];
       const deficitSurplus = (val.calorieEff != null) ? 
         (val.calorieEff - ((val.TDEE||0)+(val.calorieSport||0))).toFixed(0) : "-";
@@ -510,8 +577,14 @@ function aggiornaStoricoCompleto() {
         <td>${deficitSurplus}</td>
       </tr>`;
   });
-}
 
+  // Aggiorna grafico: prendiamo l'ultimo giorno filtrato
+  if (giorniFiltrati.length > 0) {
+      aggiornaMacroGiorno(giorniFiltrati[giorniFiltrati.length - 1]);
+  }
+}
+  
+  
 function downloadExcel(){
   var table = `<table border="1"><tr>
     <th>Data</th><th>Fabbisogno Giornaliero</th><th>Calorie</th>
@@ -721,10 +794,15 @@ function aggiorna(){
   pesoChart.data.datasets[0].data = pesoData; 
   pesoChart.update();
 }
+  
+const oggi = new Date().toISOString().split("T")[0];
+document.getElementById("giorno").value = oggi;
 
-aggiorna();
-popolaFiltri(); // inizializza i dropdown appena caricato il DOM
- document.getElementById("giorno").value = new Date().toISOString().split("T")[0];
+// Aggiorna grafico macro giorno corrente anche se non ci sono dati (metti tutto a 0)
+aggiornaMacroGiorno(oggi);
+
+aggiorna();          // aggiorna le tabelle e altri grafici
+popolaFiltri();      // inizializza i dropdown mese/anno
 </script>
 </div>
 </body>
