@@ -106,6 +106,7 @@ canvas{margin-top:30px;}
 <button class="primary" onclick="aggiornaPesoGiorno()">Aggiorna Peso Giorno</button>
 <button class="reset" onclick="resetSettimana()">Reset</button>
 <button class="download" onclick="downloadExcel()">Scarica Excel</button>
+<button class="toggle" onclick="toggleStorico()">Mostra storico completo</button>
 <button class="reset" onclick="logout()">Logout</button>
 
 <div class="stat-box" id="mediaPeso">Media peso settimanale: -</div>
@@ -139,9 +140,22 @@ canvas{margin-top:30px;}
 <canvas id="calorieChart"></canvas>
 <canvas id="macroChart"></canvas>
 <canvas id="pesoChart"></canvas>
-
+ 
+  <div id="storicoCompleto" style="display:none">
+  <h3>📜 Storico completo</h3>
+  <div class="table-wrapper">
+    <table id="tabellaCompleta">
+      <thead>
+        <tr>
+          <th>Data</th><th>Fabbisogno Giornaliero</th><th>Calorie</th>
+          <th>Proteine</th><th>Carbo</th><th>Grassi</th>
+          <th>Peso</th><th>Calorie Effettive</th><th>Deficit/Surplus</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
 </div>
-
 <!-- --- Script Module solo per Firebase --- -->
 <script type="module">
 
@@ -429,10 +443,38 @@ async function resetSettimana() {
   }
 }
 
-function toggleStorico(){
+function toggleStorico() {
   mostraStoricoCompleto = !mostraStoricoCompleto;
-  document.querySelector(".toggle").innerText = mostraStoricoCompleto?"Mostra ultimi 7 giorni":"Mostra storico completo";
+  const btn = document.querySelector(".toggle");
+  btn.innerText = mostraStoricoCompleto ? "Mostra ultimi 7 giorni" : "Mostra storico completo";
+
+  if(mostraStoricoCompleto){
+    document.getElementById("storicoCompleto").style.display = "block";
+    aggiornaStoricoCompleto();
+  } else {
+    document.getElementById("storicoCompleto").style.display = "none";
+  }
   aggiorna();
+}
+
+function aggiornaStoricoCompleto() {
+  const tbody = document.querySelector("#tabellaCompleta tbody");
+  tbody.innerHTML = "";
+  Object.keys(dati).sort((a,b)=> new Date(a)-new Date(b)).forEach(d => {
+    const val = dati[d];
+    const deficitSurplus = (val.calorieEff != null) ? (val.calorieEff - ((val.TDEE||0)+(val.calorieSport||0))).toFixed(0) : "-";
+    tbody.innerHTML += `<tr>
+      <td>${d}</td>
+      <td>${((val.TDEE||0)+(val.calorieSport||0)).toFixed(0)}</td>
+      <td>${val.calorieTotali.toFixed(0)}</td>
+      <td>${val.proteine.toFixed(1)}</td>
+      <td>${val.carbo.toFixed(1)}</td>
+      <td>${val.grassi.toFixed(1)}</td>
+      <td>${val.peso?val.peso.toFixed(1):"-"}</td>
+      <td>${val.calorieEff?val.calorieEff.toFixed(0):"-"}</td>
+      <td>${deficitSurplus}</td>
+    </tr>`;
+  });
 }
 
 function downloadExcel(){
