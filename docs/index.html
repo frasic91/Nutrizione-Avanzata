@@ -106,7 +106,7 @@ canvas{margin-top:30px;}
 <button class="primary" onclick="aggiornaPesoGiorno()">Aggiorna Peso Giorno</button>
 <button class="reset" onclick="resetSettimana()">Reset</button>
 <button class="download" onclick="downloadExcel()">Scarica Excel</button>
-<button class="toggle" onclick="toggleStorico()">Mostra storico completo</button>
+<button id="btnStorico" class="toggle" onclick="toggleStorico()">Mostra storico completo</button>
 <button class="reset" onclick="logout()">Logout</button>
 
 <div class="stat-box" id="mediaPeso">Media peso settimanale: -</div>
@@ -143,6 +143,21 @@ canvas{margin-top:30px;}
  
   <div id="storicoCompleto" style="display:none">
   <h3>📜 Storico completo</h3>
+
+  <div style="display:flex; gap:10px; margin-bottom:10px;">
+    <label>Mese: 
+      <select id="filtroMese" onchange="aggiornaStoricoCompleto()">
+        <option value="">Tutti</option>
+      </select>
+    </label>
+
+    <label>Anno: 
+      <select id="filtroAnno" onchange="aggiornaStoricoCompleto()">
+        <option value="">Tutti</option>
+      </select>
+    </label>
+  </div>
+
   <div class="table-wrapper">
     <table id="tabellaCompleta">
       <thead>
@@ -154,7 +169,7 @@ canvas{margin-top:30px;}
       </thead>
       <tbody></tbody>
     </table>
-  </div>
+</div>
 </div>
 <!-- --- Script Module solo per Firebase --- -->
 <script type="module">
@@ -445,35 +460,55 @@ async function resetSettimana() {
 
 function toggleStorico() {
   mostraStoricoCompleto = !mostraStoricoCompleto;
-  const btn = document.querySelector(".toggle");
+  const btn = document.getElementById("btnStorico");
   btn.innerText = mostraStoricoCompleto ? "Mostra ultimi 7 giorni" : "Mostra storico completo";
 
   if(mostraStoricoCompleto){
     document.getElementById("storicoCompleto").style.display = "block";
-    aggiornaStoricoCompleto();
+    popolaFiltri();            // popola prima dropdown
+    aggiornaStoricoCompleto(); // poi aggiorna tabella
   } else {
     document.getElementById("storicoCompleto").style.display = "none";
   }
-  aggiorna();
+
+  aggiorna(); // aggiorna tabella principale / grafici
 }
 
 function aggiornaStoricoCompleto() {
   const tbody = document.querySelector("#tabellaCompleta tbody");
   tbody.innerHTML = "";
-  Object.keys(dati).sort((a,b)=> new Date(a)-new Date(b)).forEach(d => {
-    const val = dati[d];
-    const deficitSurplus = (val.calorieEff != null) ? (val.calorieEff - ((val.TDEE||0)+(val.calorieSport||0))).toFixed(0) : "-";
-    tbody.innerHTML += `<tr>
-      <td>${d}</td>
-      <td>${((val.TDEE||0)+(val.calorieSport||0)).toFixed(0)}</td>
-      <td>${val.calorieTotali.toFixed(0)}</td>
-      <td>${val.proteine.toFixed(1)}</td>
-      <td>${val.carbo.toFixed(1)}</td>
-      <td>${val.grassi.toFixed(1)}</td>
-      <td>${val.peso?val.peso.toFixed(1):"-"}</td>
-      <td>${val.calorieEff?val.calorieEff.toFixed(0):"-"}</td>
-      <td>${deficitSurplus}</td>
-    </tr>`;
+
+  const filtroMeseVal = document.getElementById("filtroMese").value;
+  const filtroAnnoVal = document.getElementById("filtroAnno").value;
+
+  Object.keys(dati)
+    .sort((a,b)=> new Date(a)-new Date(b))
+    .forEach(d => {
+      const date = new Date(d);
+      const mese = date.getMonth();
+      const anno = date.getFullYear();
+
+      // Applica filtri
+      if ((filtroMeseVal !== "" && parseInt(filtroMeseVal) !== mese) ||
+          (filtroAnnoVal !== "" && parseInt(filtroAnnoVal) !== anno)) {
+        return;
+      }
+
+      const val = dati[d];
+      const deficitSurplus = (val.calorieEff != null) ? 
+        (val.calorieEff - ((val.TDEE||0)+(val.calorieSport||0))).toFixed(0) : "-";
+
+      tbody.innerHTML += `<tr>
+        <td>${d}</td>
+        <td>${((val.TDEE||0)+(val.calorieSport||0)).toFixed(0)}</td>
+        <td>${val.calorieTotali.toFixed(0)}</td>
+        <td>${val.proteine.toFixed(1)}</td>
+        <td>${val.carbo.toFixed(1)}</td>
+        <td>${val.grassi.toFixed(1)}</td>
+        <td>${val.peso?val.peso.toFixed(1):"-"}</td>
+        <td>${val.calorieEff?val.calorieEff.toFixed(0):"-"}</td>
+        <td>${deficitSurplus}</td>
+      </tr>`;
   });
 }
 
@@ -528,8 +563,54 @@ async function caricaFirebase() {
   });
 
   localStorage.setItem("settimana", JSON.stringify(dati));
-  aggiorna();
+
+  aggiorna();          // aggiorna la tabella/grafici
+  popolaFiltri();      // <-- popola dropdown mese/anno
 }
+  
+  
+function popolaFiltri() {
+  const mesi = [
+    "Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno",
+    "Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"
+  ];
+  
+  const filtroMese = document.getElementById("filtroMese");
+  const filtroAnno = document.getElementById("filtroAnno");
+
+  // Pulisci dropdown
+  filtroMese.innerHTML = '<option value="">Tutti</option>';
+  filtroAnno.innerHTML = '<option value="">Tutti</option>';
+
+  const anni = new Set();
+
+  Object.keys(dati).forEach(d => {
+    const date = new Date(d);
+    const month = date.getMonth(); // 0-11
+    const year = date.getFullYear();
+
+    anni.add(year);
+
+    // aggiungi mese solo se non già presente
+    if (!Array.from(filtroMese.options).some(o => o.value == month)) {
+      const opt = document.createElement("option");
+      opt.value = month;
+      opt.innerText = mesi[month];
+      filtroMese.appendChild(opt);
+    }
+  });
+
+  // aggiungi anni
+  Array.from(anni).sort().forEach(y => {
+    const opt = document.createElement("option");
+    opt.value = y;
+    opt.innerText = y;
+    filtroAnno.appendChild(opt);
+  });
+}
+
+// chiama questa funzione ogni volta che aggiorni dati
+popolaFiltri();
   
   function sincronizzaRealtime() {
   const user = window.auth.currentUser;
@@ -537,15 +618,16 @@ async function caricaFirebase() {
 
   const colRef =collection(window.db, "utenti", user.uid, "giorni");
 
-  onSnapshot(colRef, (snapshot) => {
-    dati = {}; // reset dati locali
-    snapshot.forEach(doc => {
-      dati[doc.id] = doc.data();
-    });
-
-    localStorage.setItem("settimana", JSON.stringify(dati)); // aggiorna localStorage
-    aggiorna(); // aggiorna tabella e grafici
+onSnapshot(colRef, (snapshot) => {
+  dati = {};
+  snapshot.forEach(doc => {
+    dati[doc.id] = doc.data();
   });
+
+  localStorage.setItem("settimana", JSON.stringify(dati));
+  popolaFiltri();   // <-- sempre aggiornato
+  aggiorna();
+});
 }
   
   async function salvaFirebase(data, valori) {
@@ -641,6 +723,7 @@ function aggiorna(){
 }
 
 aggiorna();
+popolaFiltri(); // inizializza i dropdown appena caricato il DOM
  document.getElementById("giorno").value = new Date().toISOString().split("T")[0];
 </script>
 </div>
