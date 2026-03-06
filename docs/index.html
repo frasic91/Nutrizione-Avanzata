@@ -138,6 +138,7 @@ th{background:#f1f3f6;}
 <th>Peso</th>
 <th>Calorie Effettive</th>
 <th>Deficit/Surplus</th>
+   <th>Elimina</th> <!-- <-- aggiunto -->
 </tr>
 </thead>
 <tbody id="tabella"></tbody>
@@ -489,6 +490,30 @@ function aggiornaPesoGiorno(){
       alert("Non ci sono dati per questo giorno. Prima salva il giorno con calorie e macro."); 
   }
 }
+  async function eliminaGiorno(data) {
+    if(!confirm(`Vuoi davvero eliminare i dati del giorno ${data}?`)) return;
+
+    const user = window.auth.currentUser;
+    if (!user) return alert("Utente non autenticato");
+
+    // 1️⃣ Rimuovi dal localStorage
+    delete dati[data];
+    localStorage.setItem("settimana", JSON.stringify(dati));
+
+    // 2️⃣ Rimuovi da Firebase
+    try {
+        await deleteDoc(doc(window.db, "utenti", user.uid, "giorni", data));
+        console.log("Giorno eliminato da Firebase");
+    } catch(e) {
+        console.error("Errore eliminazione giorno:", e);
+        alert("Errore durante l'eliminazione: " + e.message);
+        return;
+    }
+
+    // 3️⃣ Aggiorna tabella e grafici
+    aggiorna();
+    alert(`Giorno ${data} eliminato correttamente!`);
+}
 
   async function aggiornaCalorieEff(data, valore){
   var val = parseFloat(valore);
@@ -580,6 +605,7 @@ function aggiornaStoricoCompleto() {
         <td>${val.peso?val.peso.toFixed(1):"-"}</td>
         <td>${val.calorieEff?val.calorieEff.toFixed(0):"-"}</td>
         <td>${deficitSurplus}</td>
+        <td><button onclick="eliminaGiorno('${d}')">❌</button></td>
       </tr>`;
   });
 
@@ -757,8 +783,9 @@ function aggiorna(){
       <td>${val.carbo.toFixed(1)}</td>
       <td>${val.grassi.toFixed(1)}</td>
       <td>${val.peso ? val.peso.toFixed(1) : "-"}</td>
-      <td><input type="number" value="${val.calorieEff ?? ''}" onchange="aggiornaCalorieEff('${d}',this.value)" style="width:80px;"></td>
-      <td>${deficitSurplus}</td>
+<td><input type="number" value="${val.calorieEff ?? ''}" onchange="aggiornaCalorieEff('${d}',this.value)" style="width:80px;"></td>
+<td>${deficitSurplus}</td>
+<td><button onclick="eliminaGiorno('${d}')">❌</button></td>
     </tr>`;
 
     totCal += val.calorieTotali; 
