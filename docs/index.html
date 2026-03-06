@@ -161,7 +161,8 @@ import {
   collection,
   onSnapshot,
   setDoc,
-  doc
+  doc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 
@@ -191,6 +192,7 @@ window.collection = collection;
 window.onSnapshot = onSnapshot;
 window.setDoc = setDoc;
 window.doc = doc;
+window.deleteDoc = deleteDoc;
 
 </script>
 <!-- --- Script normale con tutte le funzioni --- -->
@@ -386,15 +388,46 @@ function aggiornaPesoGiorno(){
   }
 }
 
-function aggiornaCalorieEff(data, valore){
+  async function aggiornaCalorieEff(data, valore){
   var val = parseFloat(valore);
+
   if(!isNaN(val)){
       dati[data].calorieEff = val;
+
       localStorage.setItem("settimana", JSON.stringify(dati));
+
+      // salva anche su Firebase
+      await salvaFirebase(data, dati[data]);
+
+      // aggiorna subito tabella e grafici
+      aggiorna();
   }
 }
 
-function resetSettimana(){if(confirm("Cancellare tutto?")){dati={};localStorage.removeItem("settimana");aggiorna();}}
+async function resetSettimana() {
+  if (!confirm("Cancellare tutto?")) return;
+
+  const user = window.auth.currentUser;
+  if (!user) return alert("Utente non autenticato");
+
+  try {
+    // cancella tutti i documenti nella collezione "giorni" dell'utente
+    const colRef = collection(window.db, "utenti", user.uid, "giorni");
+    const snapshot = await getDocs(colRef);
+
+    // cancelliamo effettivamente tutti i documenti
+    await Promise.all(snapshot.docs.map(d => deleteDoc(doc(window.db, "utenti", user.uid, "giorni", d.id))));
+    
+    // reset dati locali
+    dati = {};
+    localStorage.removeItem("settimana");
+    aggiorna();
+    alert("Settimana resettata completamente!");
+  } catch (e) {
+    console.error("Errore reset:", e);
+    alert("Errore durante il reset: " + e.message);
+  }
+}
 
 function toggleStorico(){
   mostraStoricoCompleto = !mostraStoricoCompleto;
@@ -403,48 +436,56 @@ function toggleStorico(){
 }
 
 function downloadExcel(){
-  var table=`<table border="1"><tr><th>Data</th><th>Fabbisogno Giornaliero</th><th>Calorie</th><th>Proteine</th><th>Carbo</th><th>Grassi</th><th>Peso</th><th>Calorie Effettive</th><th>Deficit/Surplus</th></tr>`;
- Object.keys(dati).sort((a,b)=> new Date(a)-new Date(b)).forEach(d=>{
-      var val=dati[d];
-var deficitSurplus = (val.calorieEff !== null && val.calorieEff !== undefined)
-    ? (((val.TDEE || 0) + (val.calorieSport || 0)) - val.calorieEff).toFixed(0)
-    : "-";
-table+=`<tr>
-<td>${d}</td>
-<td>${(val.TDEE + (val.calorieSport || 0)).toFixed(0)}</td>
-<td>${val.calorieTotali.toFixed(0)}</td>
-<td>${val.proteine.toFixed(1)}</td>
-<td>${val.carbo.toFixed(1)}</td>
-<td>${val.grassi.toFixed(1)}</td>
-<td>${val.peso?val.peso.toFixed(1):"-"}</td>
-<td>${val.calorieEff?val.calorieEff.toFixed(0):"-"}</td>
-<td>${deficitSurplus}</td>
-</tr>`;
+  var table = `<table border="1"><tr>
+    <th>Data</th><th>Fabbisogno Giornaliero</th><th>Calorie</th>
+    <th>Proteine</th><th>Carbo</th><th>Grassi</th>
+    <th>Peso</th><th>Calorie Effettive</th><th>Deficit/Surplus</th>
+  </tr>`;
+
+  Object.keys(dati).sort((a,b)=> new Date(a)-new Date(b)).forEach(d => {
+    var val = dati[d];
+
+    // Calcolo deficit/surplus corretto
+    var deficitSurplus = (val.calorieEff !== null && val.calorieEff !== undefined)
+        ? (val.calorieEff - ((val.TDEE || 0) + (val.calorieSport || 0))).toFixed(0)
+        : "-";
+
+    table += `<tr>
+      <td>${d}</td>
+      <td>${(val.TDEE + (val.calorieSport || 0)).toFixed(0)}</td>
+      <td>${val.calorieTotali.toFixed(0)}</td>
+      <td>${val.proteine.toFixed(1)}</td>
+      <td>${val.carbo.toFixed(1)}</td>
+      <td>${val.grassi.toFixed(1)}</td>
+      <td>${val.peso ? val.peso.toFixed(1) : "-"}</td>
+      <td>${val.calorieEff ? val.calorieEff.toFixed(0) : "-"}</td>
+      <td>${deficitSurplus}</td>
+    </tr>`;
   });
-  table+=`</table>`;
-  var blob=new Blob([`<html><body>${table}</body></html>`],{type:"application/vnd.ms-excel"});
-  var link=document.createElement("a");
-  link.href=URL.createObjectURL(blob);
-  link.download="SettimanaNutrizione.xls";
+
+  table += `</table>`;
+  var blob = new Blob([`<html><body>${table}</body></html>`], {type:"application/vnd.ms-excel"});
+  var link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "SettimanaNutrizione.xls";
   link.click();
 }
 
 async function caricaFirebase() {
- const user = window.auth.currentUser;
+  const user = window.auth.currentUser;
   if (!user) return;
 
-  // Prendi tutti i giorni dall'utente
-  const querySnapshot = await getDocs(collection(db, "utenti", user.uid, "giorni"));
-  dati = {}; // reset locale
+  const querySnapshot = await getDocs(
+    collection(window.db, "utenti", user.uid, "giorni")
+  );
+
+  dati = {};
 
   querySnapshot.forEach((doc) => {
     dati[doc.id] = doc.data();
   });
 
-  // Aggiorna localStorage per mantenere i dati sincronizzati
   localStorage.setItem("settimana", JSON.stringify(dati));
-
-  // Aggiorna tabella e grafici
   aggiorna();
 }
   
@@ -490,46 +531,75 @@ var macroChart = new Chart(document.getElementById("macroChart"), {type:'bar',da
 var pesoChart = new Chart(document.getElementById("pesoChart"), {type:'bar',data:{labels:[],datasets:[{label:'Peso (kg)',data:[],backgroundColor:'#9C27B0'}]},options:{responsive:true,scales:{y:{beginAtZero:false}}}});
 
 function aggiorna(){
-  var tbody=document.getElementById("tabella"); tbody.innerHTML="";
-  var totCal=0,totPro=0,totCarb=0,totGrass=0,pesoTot=0,pesoCount=0;
-  var labels=[],calData=[],proData=[],carbData=[],grassData=[],pesoData=[];
-  var dateKeys = Object.keys(dati).sort((a,b)=> new Date(a)-new Date(b));
+  var tbody = document.getElementById("tabella"); 
+  tbody.innerHTML = "";
+  var totCal = 0, totPro = 0, totCarb = 0, totGrass = 0, pesoTot = 0, pesoCount = 0;
+  var labels = [], calData = [], proData = [], carbData = [], grassData = [], pesoData = [];
+  
+  var dateKeys = Object.keys(dati).sort((a,b)=> new Date(a) - new Date(b));
   if(!mostraStoricoCompleto){ dateKeys = dateKeys.slice(-7); } // ultimi 7 giorni
-  dateKeys.forEach(d=>{
-    var val=dati[d];
-var deficitSurplus = (val.calorieEff !== null && val.calorieEff !== undefined)
-    ? (((val.TDEE || 0) + (val.calorieSport || 0)) - val.calorieEff).toFixed(0)
-    : "-";
-    tbody.innerHTML+=`<tr>
+
+  dateKeys.forEach(d => {
+    var val = dati[d];
+
+    // Calcolo deficit/surplus corretto
+    var deficitSurplus = (val.calorieEff !== null && val.calorieEff !== undefined)
+        ? (val.calorieEff - ((val.TDEE || 0) + (val.calorieSport || 0))).toFixed(0)
+        : "-";
+
+    tbody.innerHTML += `<tr>
       <td>${d}</td>
-   <td>${((val.TDEE || 0) + (val.calorieSport || 0)).toFixed(0)}</td>
-   <td>${val.calorieTotali.toFixed(0)}</td>
+      <td>${((val.TDEE || 0) + (val.calorieSport || 0)).toFixed(0)}</td>
+      <td>${val.calorieTotali.toFixed(0)}</td>
       <td>${val.proteine.toFixed(1)}</td>
       <td>${val.carbo.toFixed(1)}</td>
       <td>${val.grassi.toFixed(1)}</td>
-      <td>${val.peso?val.peso.toFixed(1):"-"}</td>
-     <td><input type="number" value="${val.calorieEff ?? ''}"onchange="aggiornaCalorieEff('${d}',this.value)" style="width:80px;"></td>
+      <td>${val.peso ? val.peso.toFixed(1) : "-"}</td>
+      <td><input type="number" value="${val.calorieEff ?? ''}" onchange="aggiornaCalorieEff('${d}',this.value)" style="width:80px;"></td>
       <td>${deficitSurplus}</td>
-      </tr>`;
-    totCal+=val.calorieTotali; totPro+=val.proteine; totCarb+=val.carbo; totGrass+=val.grassi;
- if(val.peso !== null && val.peso !== undefined){
-pesoTot+=val.peso;
-pesoCount++;
-}
-    labels.push(d); calData.push(val.calorieTotali); proData.push(val.proteine); carbData.push(val.carbo); grassData.push(val.grassi); pesoData.push(val.peso || null);
+    </tr>`;
+
+    totCal += val.calorieTotali; 
+    totPro += val.proteine; 
+    totCarb += val.carbo; 
+    totGrass += val.grassi;
+
+    if(val.peso !== null && val.peso !== undefined){
+      pesoTot += val.peso;
+      pesoCount++;
+    }
+
+    labels.push(d); 
+    calData.push(val.calorieTotali); 
+    proData.push(val.proteine); 
+    carbData.push(val.carbo); 
+    grassData.push(val.grassi); 
+    pesoData.push(val.peso || null);
   });
-  document.getElementById("totCal").innerText=totCal.toFixed(0);
-  document.getElementById("totPro").innerText=totPro.toFixed(1);
-  document.getElementById("totCarb").innerText=totCarb.toFixed(1);
-  document.getElementById("totGrass").innerText=totGrass.toFixed(1);
-  document.getElementById("mediaPeso").innerText=pesoCount>0?"Media peso settimanale: "+(pesoTot/pesoCount).toFixed(2)+" kg":"Media peso settimanale: -";
-  
-  calorieChart.data.labels=labels; calorieChart.data.datasets[0].data=calData; calorieChart.update();
-  macroChart.data.labels=labels; macroChart.data.datasets[0].data=proData; macroChart.data.datasets[1].data=carbData; macroChart.data.datasets[2].data=grassData; macroChart.update();
-  pesoChart.data.labels=labels; pesoChart.data.datasets[0].data=pesoData; pesoChart.update();
+
+  document.getElementById("totCal").innerText = totCal.toFixed(0);
+  document.getElementById("totPro").innerText = totPro.toFixed(1);
+  document.getElementById("totCarb").innerText = totCarb.toFixed(1);
+  document.getElementById("totGrass").innerText = totGrass.toFixed(1);
+  document.getElementById("mediaPeso").innerText = pesoCount>0 ? "Media peso settimanale: " + (pesoTot/pesoCount).toFixed(2) + " kg" : "Media peso settimanale: -";
+
+  calorieChart.data.labels = labels; 
+  calorieChart.data.datasets[0].data = calData; 
+  calorieChart.update();
+
+  macroChart.data.labels = labels; 
+  macroChart.data.datasets[0].data = proData; 
+  macroChart.data.datasets[1].data = carbData; 
+  macroChart.data.datasets[2].data = grassData; 
+  macroChart.update();
+
+  pesoChart.data.labels = labels; 
+  pesoChart.data.datasets[0].data = pesoData; 
+  pesoChart.update();
 }
 
 aggiorna();
+ document.getElementById("giorno").value = new Date().toISOString().split("T")[0];
 </script>
 </div>
 </body>
