@@ -123,7 +123,7 @@ th{background:#f1f3f6;}
 <button class="reset" onclick="logout()">Logout</button>
 
 <div class="stat-box" id="mediaPeso">Media peso settimanale: -</div>
-<div class="stat-box" id="tdeeBox">TDEE stimato: -</div>
+
 
 <div class="table-wrapper">
 <table>
@@ -374,8 +374,7 @@ function calcola(){
   var NEAT=!isNaN(neatMan)?neatMan:(BMR*act-BMR);
   
   var TDEE=BMR+NEAT;
-  
-  document.getElementById("tdeeBox").innerText="TDEE stimato: "+TDEE.toFixed(0)+" kcal";
+ 
   
   var kmCorsa=parseFloat(document.getElementById("km").value)||0;
   var calorieCorsa=kmCorsa*p;
